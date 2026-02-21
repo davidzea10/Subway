@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Subway Runner - Programmation Jeux Vidéo TP2</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -19,6 +19,7 @@
       <div class="boutons-accueil">
         <button type="button" id="bouton-aide">Aide</button>
         <button type="button" id="bouton-historique">Historique</button>
+        <button type="button" id="bouton-apropos">À propos</button>
       </div>
       <button type="button" id="bouton-continuer">Continuer</button>
     </div>
@@ -71,6 +72,16 @@
         <h2>Historique des parties</h2>
         <ul id="liste-historique"></ul>
         <button type="button" class="bouton-fermer-overlay" id="fermer-historique">Fermer</button>
+      </div>
+    </div>
+
+    <!-- Page À propos -->
+    <div id="page-apropos" class="overlay cache">
+      <div class="overlay-contenu">
+        <h2>À propos</h2>
+        <p class="texte-apropos">Subway Runner — TP Programmation Jeux Vidéo.</p>
+        <p class="auteur-apropos"><strong>Réalisé par DEBUZE DAVID</strong></p>
+        <button type="button" class="bouton-fermer-overlay" id="fermer-apropos">Fermer</button>
       </div>
     </div>
 

@@ -23,6 +23,7 @@ const scoreVictoire = document.getElementById('score-victoire');
 const boutonRejouerVictoire = document.getElementById('bouton-rejouer-victoire');
 const pageAide = document.getElementById('page-aide');
 const pageHistorique = document.getElementById('page-historique');
+const pageApropos = document.getElementById('page-apropos');
 const listeHistorique = document.getElementById('liste-historique');
 const ecranPause = document.getElementById('ecran-pause');
 const boutonPause = document.getElementById('bouton-pause');
@@ -707,6 +708,13 @@ document.getElementById('bouton-historique').addEventListener('click', () => {
 });
 document.getElementById('fermer-historique').addEventListener('click', () => {
   pageHistorique.classList.add('cache');
+});
+
+document.getElementById('bouton-apropos').addEventListener('click', () => {
+  pageApropos.classList.remove('cache');
+});
+document.getElementById('fermer-apropos').addEventListener('click', () => {
+  pageApropos.classList.add('cache');
 });
 
 boutonContinuer.addEventListener('click', () => {

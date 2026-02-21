@@ -13,11 +13,13 @@ body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
   color: #eee;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 #conteneur-jeu {
@@ -30,7 +32,38 @@ body {
   border-radius: 16px;
   box-shadow: 0 0 40px rgba(0, 150, 255, 0.3), inset 0 0 60px rgba(0, 0, 0, 0.5);
   overflow: hidden;
-  touch-action: manipulation; /* Évite zoom double-tap sur mobile */
+  touch-action: manipulation;
+}
+
+/* Responsive mobile : plein écran sur téléphone (ex. iPhone 13) */
+@media (max-width: 768px), (max-height: 700px) {
+  body {
+    align-items: stretch;
+    padding: 0;
+  }
+  #conteneur-jeu {
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    box-shadow: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  #ecran-accueil {
+    padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+  }
+  #boutons-jeu {
+    top: max(12px, env(safe-area-inset-top));
+  }
+  #interface-jeu {
+    top: max(48px, calc(env(safe-area-inset-top) + 36px));
+  }
 }
 
 /* Canvas du jeu */
@@ -258,6 +291,16 @@ body {
 .bouton-fermer-overlay {
   width: 100%;
   margin-top: 8px;
+}
+
+.texte-apropos {
+  margin-bottom: 12px;
+  color: #ccc;
+}
+.auteur-apropos {
+  color: #00d4ff;
+  font-size: 1.1rem;
+  margin-bottom: 20px;
 }
 
 .instructions p {
