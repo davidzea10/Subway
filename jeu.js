@@ -29,7 +29,19 @@ const ecranPause = document.getElementById('ecran-pause');
 const boutonPause = document.getElementById('bouton-pause');
 const boutonReprendre = document.getElementById('bouton-reprendre');
 const boutonQuitter = document.getElementById('bouton-quitter');
-const CLE_STOCKAGE_HISTORIQUE = 'subwayRunnerHistorique';
+const PREFIX_STOCKAGE_HISTORIQUE = 'subwayRunnerHistorique_';
+function cleHistoriquePourPseudo(pseudo) {
+  const p = (pseudo && pseudo.trim()) ? pseudo.trim() : 'Joueur';
+  return PREFIX_STOCKAGE_HISTORIQUE + p;
+}
+
+// Supabase (scores en ligne + remarques) — config dans supabaseConfig.js
+let supabaseClient = null;
+if (typeof window !== 'undefined' && window.SUPABASE_URL && window.SUPABASE_ANON_KEY && window.supabase) {
+  try {
+    supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  } catch (e) {}
+}
 
 // Contexte du canvas pour dessiner
 const ctx = zoneJeu.getContext('2d');
@@ -583,6 +595,7 @@ function finPartie() {
   enCours = false;
   scoreFinal.textContent = score;
   enregistrerDansHistorique(nomJoueur, score, false);
+  enregistrerScoreEnLigne(nomJoueur, score, false);
   document.getElementById('interface-jeu').classList.add('cache');
   document.getElementById('boutons-jeu').classList.add('cache');
   ecranGameOver.classList.remove('cache');
@@ -592,6 +605,7 @@ function finVictoire() {
   enCours = false;
   scoreVictoire.textContent = score;
   enregistrerDansHistorique(nomJoueur, score, true);
+  enregistrerScoreEnLigne(nomJoueur, score, true);
   document.getElementById('interface-jeu').classList.add('cache');
   document.getElementById('boutons-jeu').classList.add('cache');
   ecranVictoire.classList.remove('cache');
@@ -601,6 +615,26 @@ function rejouer() {
   ecranGameOver.classList.add('cache');
   ecranVictoire.classList.add('cache');
   demarrerPartie();
+}
+
+let classementOuvertDepuisGameOver = false;
+
+function gameOverVersClassement() {
+  classementOuvertDepuisGameOver = true;
+  ecranGameOver.classList.add('cache');
+  document.getElementById('interface-jeu').classList.add('cache');
+  document.getElementById('boutons-jeu').classList.add('cache');
+  enCours = false;
+  pageClassement.classList.remove('cache');
+  chargerClassement(filtreClassement.value);
+}
+
+function gameOverQuitter() {
+  enCours = false;
+  ecranGameOver.classList.add('cache');
+  document.getElementById('interface-jeu').classList.add('cache');
+  document.getElementById('boutons-jeu').classList.add('cache');
+  ecranAccueil.classList.remove('cache');
 }
 
 // ============== ÉVÉNEMENTS CLAVIER ==============
@@ -668,33 +702,201 @@ function installerControlesSwipe() {
 }
 installerControlesSwipe();
 
-// ============== HISTORIQUE (localStorage) ==============
+// ============== HISTORIQUE (localStorage, un historique par pseudo sur l'appareil) ==============
 function enregistrerDansHistorique(nom, points, victoire) {
   const nomAffichage = nom && nom.trim() ? nom.trim() : 'Joueur';
+  const cle = cleHistoriquePourPseudo(nomAffichage);
   try {
-    const historique = JSON.parse(localStorage.getItem(CLE_STOCKAGE_HISTORIQUE) || '[]');
+    const historique = JSON.parse(localStorage.getItem(cle) || '[]');
     historique.unshift({
-      nom: nomAffichage,
       score: points,
       victoire: !!victoire,
       date: new Date().toLocaleString('fr-FR'),
     });
-    localStorage.setItem(CLE_STOCKAGE_HISTORIQUE, JSON.stringify(historique.slice(0, 50)));
+    localStorage.setItem(cle, JSON.stringify(historique.slice(0, 50)));
   } catch (e) {}
 }
 
 function afficherHistorique() {
+  const sousTitreHisto = document.getElementById('sous-titre-historique');
+  const pseudo = (inputNom.value || '').trim();
+  if (sousTitreHisto) sousTitreHisto.textContent = pseudo ? `Historique de « ${pseudo} » sur cet appareil` : '';
   try {
-    const historique = JSON.parse(localStorage.getItem(CLE_STOCKAGE_HISTORIQUE) || '[]');
+    const cle = cleHistoriquePourPseudo(pseudo || 'Joueur');
+    const historique = JSON.parse(localStorage.getItem(cle) || '[]');
+    if (!pseudo) {
+      listeHistorique.innerHTML = '<li class="message-histo-vide">Saisis ton pseudo ci-dessus pour voir ton historique.</li>';
+      return;
+    }
     listeHistorique.innerHTML = historique.length
-      ? historique.map((e) => `<li>${e.nom} — <span class="score-histo">${e.score}</span> pts${e.victoire ? ' ✓ Victoire' : ''} — ${e.date}</li>`).join('')
-      : '<li>Aucune partie enregistrée.</li>';
+      ? historique.map((e) => `<li><span class="score-histo">${e.score}</span> pts${e.victoire ? ' ✓ Victoire' : ''} — ${e.date}</li>`).join('')
+      : '<li class="message-histo-vide">Aucune partie enregistrée pour ce pseudo.</li>';
   } catch (e) {
     listeHistorique.innerHTML = '<li>Erreur chargement.</li>';
   }
 }
 
-// ============== ACCUEIL : Aide, Historique, Continuer, Choix personnage ==============
+// ============== SUPABASE : scores en ligne (un pseudo = une ligne, meilleur score conservé) ==============
+async function enregistrerScoreEnLigne(pseudo, points, victoire) {
+  const nom = (pseudo && pseudo.trim()) ? pseudo.trim() : 'Joueur';
+  if (!supabaseClient) return;
+  try {
+    await supabaseClient.rpc('insert_or_update_score', {
+      p_pseudo: nom,
+      p_score: points,
+      p_victoire: !!victoire,
+    });
+  } catch (e) {}
+}
+
+// ============== CLASSEMENT (Supabase) ==============
+const pageClassement = document.getElementById('page-classement');
+const listeClassement = document.getElementById('liste-classement');
+const filtreClassement = document.getElementById('filtre-classement');
+const messageChargementClassement = document.getElementById('message-chargement-classement');
+
+function dateDebutHeure() {
+  const d = new Date();
+  d.setTime(d.getTime() - 60 * 60 * 1000);
+  return d.toISOString();
+}
+
+function dateDebutJour() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+function dateDebutSemaine() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const jour = d.getDay();
+  const decalage = jour === 0 ? 6 : jour - 1;
+  d.setDate(d.getDate() - decalage);
+  return d.toISOString();
+}
+
+function dateDebutMois() {
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+async function chargerClassement(filtre) {
+  if (!supabaseClient) {
+    listeClassement.innerHTML = '';
+    messageChargementClassement.textContent = 'Configure Supabase (supabaseConfig.js) pour afficher le classement.';
+    messageChargementClassement.classList.remove('cache');
+    return;
+  }
+  messageChargementClassement.textContent = 'Chargement…';
+  messageChargementClassement.classList.remove('cache');
+  listeClassement.innerHTML = '';
+
+  try {
+    let query = supabaseClient.from('scores').select('id, pseudo, score, victoire, created_at');
+    if (filtre === 'victoires') {
+      query = query.eq('victoire', true);
+    } else if (filtre === 'heure') {
+      query = query.gte('created_at', dateDebutHeure());
+    } else if (filtre === 'jour') {
+      query = query.gte('created_at', dateDebutJour());
+    } else if (filtre === 'semaine') {
+      query = query.gte('created_at', dateDebutSemaine());
+    } else if (filtre === 'mois') {
+      query = query.gte('created_at', dateDebutMois());
+    }
+    query = query.order('score', { ascending: false }).limit(100);
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    const rows = data || [];
+
+    messageChargementClassement.classList.add('cache');
+    if (rows.length === 0) {
+      listeClassement.innerHTML = '<p class="classement-vide">Aucun score pour ce filtre.</p>';
+      return;
+    }
+    const medals = ['🥇', '🥈', '🥉'];
+    listeClassement.innerHTML = rows.map((r, idx) => {
+      const rang = idx + 1;
+      const medaille = rang <= 3 ? medals[rang - 1] : '';
+      const dateStr = r.created_at ? new Date(r.created_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      return `<div class="card-classement ${rang <= 3 ? 'card-podium' : ''}" data-rang="${rang}">
+        <span class="card-rang">${medaille || '#' + rang}</span>
+        <div class="card-infos">
+          <span class="card-pseudo">${r.pseudo}</span>
+          <span class="card-meta">${dateStr}${r.victoire ? ' · ✓ Victoire' : ''}</span>
+        </div>
+        <span class="card-score">${r.score} <span class="card-pts">pts</span></span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    messageChargementClassement.textContent = 'Impossible de charger le classement.';
+    messageChargementClassement.classList.remove('cache');
+    listeClassement.innerHTML = '';
+  }
+}
+
+function ouvrirClassement() {
+  classementOuvertDepuisGameOver = false;
+  pageClassement.classList.remove('cache');
+  chargerClassement(filtreClassement.value);
+}
+
+function fermerClassement() {
+  pageClassement.classList.add('cache');
+  if (classementOuvertDepuisGameOver) {
+    classementOuvertDepuisGameOver = false;
+    ecranGameOver.classList.remove('cache');
+  }
+}
+
+// ============== REMARQUES (Supabase, lecture réservée au dev) ==============
+const pageRemarques = document.getElementById('page-remarques');
+const inputRemarquePseudo = document.getElementById('input-remarque-pseudo');
+const inputRemarqueTexte = document.getElementById('input-remarque-texte');
+const messageEnvoiRemarque = document.getElementById('message-envoi-remarque');
+const boutonEnvoyerRemarque = document.getElementById('bouton-envoyer-remarque');
+
+async function envoyerRemarque() {
+  const texte = (inputRemarqueTexte && inputRemarqueTexte.value) ? inputRemarqueTexte.value.trim() : '';
+  if (!texte) {
+    if (messageEnvoiRemarque) {
+      messageEnvoiRemarque.textContent = 'Écris un message.';
+      messageEnvoiRemarque.className = 'message-info erreur';
+      messageEnvoiRemarque.classList.remove('cache');
+    }
+    return;
+  }
+  const pseudo = (inputRemarquePseudo && inputRemarquePseudo.value) ? inputRemarquePseudo.value.trim() : null;
+  if (!supabaseClient) {
+    if (messageEnvoiRemarque) {
+      messageEnvoiRemarque.textContent = 'Supabase non configuré.';
+      messageEnvoiRemarque.className = 'message-info erreur';
+      messageEnvoiRemarque.classList.remove('cache');
+    }
+    return;
+  }
+  messageEnvoiRemarque.textContent = 'Envoi…';
+  messageEnvoiRemarque.className = 'message-info';
+  messageEnvoiRemarque.classList.remove('cache');
+  try {
+    const { error } = await supabaseClient.from('remarques').insert({ pseudo, texte });
+    if (error) throw error;
+    messageEnvoiRemarque.textContent = 'Message envoyé. Merci !';
+    messageEnvoiRemarque.className = 'message-info succes';
+    inputRemarqueTexte.value = '';
+    if (inputRemarquePseudo) inputRemarquePseudo.value = '';
+  } catch (e) {
+    messageEnvoiRemarque.textContent = 'Erreur d\'envoi. Réessaie.';
+    messageEnvoiRemarque.className = 'message-info erreur';
+  }
+}
+
+// ============== ACCUEIL : Aide, Historique, Classement, Remarques, Continuer, Choix personnage ==============
 document.getElementById('bouton-aide').addEventListener('click', () => {
   pageAide.classList.remove('cache');
 });
@@ -709,6 +911,18 @@ document.getElementById('bouton-historique').addEventListener('click', () => {
 document.getElementById('fermer-historique').addEventListener('click', () => {
   pageHistorique.classList.add('cache');
 });
+
+document.getElementById('bouton-classement').addEventListener('click', ouvrirClassement);
+document.getElementById('fermer-classement').addEventListener('click', fermerClassement);
+filtreClassement.addEventListener('change', () => chargerClassement(filtreClassement.value));
+
+document.getElementById('bouton-remarques').addEventListener('click', () => {
+  pageRemarques.classList.remove('cache');
+  if (inputRemarquePseudo && !inputRemarquePseudo.value && nomJoueur) inputRemarquePseudo.value = nomJoueur;
+  messageEnvoiRemarque.classList.add('cache');
+});
+document.getElementById('fermer-remarques').addEventListener('click', () => pageRemarques.classList.add('cache'));
+boutonEnvoyerRemarque.addEventListener('click', envoyerRemarque);
 
 document.getElementById('bouton-apropos').addEventListener('click', () => {
   pageApropos.classList.remove('cache');
@@ -756,6 +970,8 @@ document.querySelectorAll('.apercu-perso').forEach((canvas, i) => {
 // ============== BOUTONS ET REDIMENSIONNEMENT ==============
 boutonRejouer.addEventListener('click', rejouer);
 boutonRejouerVictoire.addEventListener('click', rejouer);
+document.getElementById('bouton-classement-gameover').addEventListener('click', gameOverVersClassement);
+document.getElementById('bouton-quitter-gameover').addEventListener('click', gameOverQuitter);
 
 window.addEventListener('resize', () => {
   redimensionnerCanvas();

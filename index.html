@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Subway Runner - Programmation Jeux Vidéo TP2</title>
+  <title>Subway Runner DBZ</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="conteneur-jeu">
     <!-- Écran 1 : Saisie du nom + Aide / Historique -->
     <div id="ecran-accueil">
-      <h1>Subway Runner</h1>
+      <h1>Subway Runner <span class="titre-dbz">DBZ</span></h1>
       <p class="sous-titre">Évite les obstacles !</p>
       <div class="champ-nom">
         <label for="input-nom">Ton pseudo :</label>
@@ -19,6 +19,8 @@
       <div class="boutons-accueil">
         <button type="button" id="bouton-aide">Aide</button>
         <button type="button" id="bouton-historique">Historique</button>
+        <button type="button" id="bouton-classement">Classement</button>
+        <button type="button" id="bouton-remarques">Remarques</button>
         <button type="button" id="bouton-apropos">À propos</button>
       </div>
       <button type="button" id="bouton-continuer">Continuer</button>
@@ -66,12 +68,52 @@
       </div>
     </div>
 
-    <!-- Page Historique (overlay) -->
+    <!-- Page Historique (overlay) — uniquement pour le pseudo saisi sur cet appareil -->
     <div id="page-historique" class="overlay cache">
       <div class="overlay-contenu">
         <h2>Historique des parties</h2>
+        <p id="sous-titre-historique" class="sous-titre-historique"></p>
         <ul id="liste-historique"></ul>
         <button type="button" class="bouton-fermer-overlay" id="fermer-historique">Fermer</button>
+      </div>
+    </div>
+
+    <!-- Page Classement (scores en ligne Supabase) -->
+    <div id="page-classement" class="overlay cache">
+      <div class="overlay-contenu overlay-classement">
+        <h2 class="titre-classement">🏆 Classement</h2>
+        <p class="sous-titre-classement">Un pseudo = une place. Le meilleur score est conservé.</p>
+        <div class="filtres-classement">
+          <label for="filtre-classement" class="label-filtre">Période</label>
+          <select id="filtre-classement">
+            <option value="tous">Tous</option>
+            <option value="heure">Dernière heure</option>
+            <option value="jour">Aujourd'hui</option>
+            <option value="semaine">Cette semaine</option>
+            <option value="mois">Ce mois</option>
+            <option value="victoires">Victoires uniquement</option>
+          </select>
+        </div>
+        <p id="message-chargement-classement" class="message-info">Chargement…</p>
+        <div id="liste-classement" class="liste-classement-widget"></div>
+        <button type="button" class="bouton-fermer-overlay" id="fermer-classement">Fermer</button>
+      </div>
+    </div>
+
+    <!-- Page Remarques (envoi au dev, seul le dev peut lire dans Supabase) -->
+    <div id="page-remarques" class="overlay cache">
+      <div class="overlay-contenu">
+        <h2>Envoyer une remarque</h2>
+        <p class="texte-remarques">Ton message ne sera lu que par le créateur du jeu.</p>
+        <div class="form-remarques">
+          <label for="input-remarque-pseudo">Ton pseudo (optionnel)</label>
+          <input type="text" id="input-remarque-pseudo" placeholder="Pseudo" maxlength="30" autocomplete="off">
+          <label for="input-remarque-texte">Message</label>
+          <textarea id="input-remarque-texte" placeholder="Écris ta remarque ici…" rows="4" maxlength="500"></textarea>
+          <p id="message-envoi-remarque" class="message-info cache"></p>
+          <button type="button" id="bouton-envoyer-remarque">Envoyer</button>
+        </div>
+        <button type="button" class="bouton-fermer-overlay" id="fermer-remarques">Fermer</button>
       </div>
     </div>
 
@@ -79,8 +121,7 @@
     <div id="page-apropos" class="overlay cache">
       <div class="overlay-contenu">
         <h2>À propos</h2>
-        <p class="texte-apropos">Subway Runner — TP Programmation Jeux Vidéo.</p>
-        <p class="auteur-apropos"><strong>Réalisé par DEBUZE DAVID</strong></p>
+        <p class="auteur-apropos"><strong>Réalisé par Débuze David</strong></p>
         <button type="button" class="bouton-fermer-overlay" id="fermer-apropos">Fermer</button>
       </div>
     </div>
@@ -122,7 +163,11 @@
     <div id="ecran-game-over" class="cache">
       <h2>Game Over</h2>
       <p>Score final : <span id="score-final">0</span></p>
-      <button id="bouton-rejouer">Rejouer</button>
+      <div class="boutons-game-over">
+        <button type="button" id="bouton-rejouer">Rejouer</button>
+        <button type="button" id="bouton-classement-gameover">Voir le Classement</button>
+        <button type="button" id="bouton-quitter-gameover">Quitter</button>
+      </div>
     </div>
 
     <!-- Écran de victoire -->
@@ -134,6 +179,8 @@
     </div>
   </div>
 
+  <script src="supabaseConfig.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="jeu.js"></script>
 </body>
 </html>

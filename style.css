@@ -100,6 +100,12 @@ body {
   background-clip: text;
 }
 
+.titre-dbz {
+  font-size: 0.95em;
+  letter-spacing: 0.08em;
+  opacity: 0.95;
+}
+
 .sous-titre {
   color: #888;
   margin-bottom: 32px;
@@ -288,15 +294,173 @@ body {
   margin-left: 8px;
 }
 
+.sous-titre-historique {
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+
+#liste-historique .message-histo-vide {
+  color: #888;
+  font-style: italic;
+}
+
+/* Classement (Supabase) — interface soignée */
+.overlay-contenu.overlay-classement {
+  max-width: 420px;
+}
+
+.titre-classement {
+  margin-bottom: 4px;
+  font-size: 1.6rem;
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sous-titre-classement {
+  color: #888;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.filtres-classement {
+  margin-bottom: 16px;
+}
+
+.label-filtre {
+  display: block;
+  color: #aaa;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+
+.filtres-classement select {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 1rem;
+  background: #1a1a2e;
+  color: #eee;
+  border: 1px solid #3a3a5a;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.liste-classement-widget {
+  margin-bottom: 20px;
+  max-height: 380px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.classement-vide {
+  color: #888;
+  text-align: center;
+  padding: 24px 16px;
+}
+
+.card-classement {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(20, 20, 40, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #e0e0e0;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.card-classement:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 20px rgba(0, 212, 255, 0.15);
+}
+
+.card-podium {
+  border-color: rgba(255, 215, 0, 0.35);
+  background: linear-gradient(135deg, rgba(40, 35, 20, 0.95), rgba(30, 28, 20, 0.98));
+}
+
+.card-rang {
+  flex-shrink: 0;
+  width: 40px;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.card-infos {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-pseudo {
+  font-weight: 600;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.card-meta {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.card-score {
+  flex-shrink: 0;
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: #00d4ff;
+}
+
+.card-pts {
+  font-size: 0.85rem;
+  font-weight: normal;
+  color: #0099cc;
+}
+
+.message-info { color: #888; font-size: 0.9rem; margin-bottom: 12px; }
+
+/* Remarques (formulaire) */
+.texte-remarques {
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+.form-remarques label {
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 4px;
+  color: #aaa;
+  font-size: 0.9rem;
+}
+.form-remarques input,
+.form-remarques textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 1rem;
+  background: #1a1a2e;
+  color: #eee;
+  border: 1px solid #444;
+  border-radius: 8px;
+  font-family: inherit;
+}
+.form-remarques textarea { resize: vertical; min-height: 80px; }
+.form-remarques #bouton-envoyer-remarque { margin-top: 16px; }
+.message-info.succes { color: #00b894; }
+.message-info.erreur { color: #ff6b6b; }
+
 .bouton-fermer-overlay {
   width: 100%;
   margin-top: 8px;
 }
 
-.texte-apropos {
-  margin-bottom: 12px;
-  color: #ccc;
-}
 .auteur-apropos {
   color: #00d4ff;
   font-size: 1.1rem;
@@ -441,6 +605,17 @@ button:active {
 #ecran-game-over p {
   margin-bottom: 24px;
   font-size: 1.2rem;
+}
+
+.boutons-game-over {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.boutons-game-over button {
+  min-width: 140px;
 }
 
 #score-final {
