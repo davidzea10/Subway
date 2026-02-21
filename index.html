@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Subway Runner - Programmation Jeux Vidéo TP2</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="conteneur-jeu">
+    <!-- Écran 1 : Saisie du nom + Aide / Historique -->
+    <div id="ecran-accueil">
+      <h1>Subway Runner</h1>
+      <p class="sous-titre">Évite les obstacles !</p>
+      <div class="champ-nom">
+        <label for="input-nom">Ton pseudo :</label>
+        <input type="text" id="input-nom" placeholder="Entre ton nom" maxlength="20" autocomplete="off">
+      </div>
+      <div class="boutons-accueil">
+        <button type="button" id="bouton-aide">Aide</button>
+        <button type="button" id="bouton-historique">Historique</button>
+      </div>
+      <button type="button" id="bouton-continuer">Continuer</button>
+    </div>
+
+    <!-- Écran 2 : Choix du personnage -->
+    <div id="ecran-choix-personnage" class="cache">
+      <h2>Choisis ton personnage</h2>
+      <p class="joueur-nom"><span id="texte-joueur"></span></p>
+      <div id="grille-personnages">
+        <button type="button" class="choix-perso" data-perso="0" title="Héros bleu">
+          <canvas class="apercu-perso" width="80" height="80"></canvas>
+          <span>Héros</span>
+        </button>
+        <button type="button" class="choix-perso" data-perso="1" title="Explorateur vert">
+          <canvas class="apercu-perso" width="80" height="80"></canvas>
+          <span>Explorateur</span>
+        </button>
+        <button type="button" class="choix-perso" data-perso="2" title="Savant orange">
+          <canvas class="apercu-perso" width="80" height="80"></canvas>
+          <span>Savant</span>
+        </button>
+        <button type="button" class="choix-perso" data-perso="3" title="Fantôme violet">
+          <canvas class="apercu-perso" width="80" height="80"></canvas>
+          <span>Fantôme</span>
+        </button>
+      </div>
+      <button type="button" id="bouton-jouer">Jouer</button>
+    </div>
+
+    <!-- Page Aide (overlay) -->
+    <div id="page-aide" class="overlay cache">
+      <div class="overlay-contenu">
+        <h2>Aide</h2>
+        <div class="texte-aide">
+          <p><strong>Objectif :</strong> Atteindre 1500 points en 5 étapes (300 points par étape).</p>
+          <p><strong>Déplacements :</strong></p>
+          <p><kbd>←</kbd> <kbd>→</kbd> ou <kbd>Q</kbd> <kbd>D</kbd> : Gauche / Droite</p>
+          <p><kbd>↑</kbd> <kbd>↓</kbd> ou <kbd>Z</kbd> <kbd>S</kbd> : Avancer / Reculer</p>
+          <p>Sur mobile : glisse le doigt sur l'écran (haut, bas, gauche, droite) pour te déplacer. Un geste = une case.</p>
+          <p>Un appui = une case. Évite les obstacles qui tombent !</p>
+          <p><strong>Étoiles :</strong> +1 vie (max 5). <strong>Parasites rouges :</strong> -2 vies.</p>
+        </div>
+        <button type="button" class="bouton-fermer-overlay" id="fermer-aide">Fermer</button>
+      </div>
+    </div>
+
+    <!-- Page Historique (overlay) -->
+    <div id="page-historique" class="overlay cache">
+      <div class="overlay-contenu">
+        <h2>Historique des parties</h2>
+        <ul id="liste-historique"></ul>
+        <button type="button" class="bouton-fermer-overlay" id="fermer-historique">Fermer</button>
+      </div>
+    </div>
+
+    <!-- Zone de jeu -->
+    <canvas id="zone-jeu"></canvas>
+
+    <!-- Interface en jeu (score, étape, vies en haut) -->
+    <div id="interface-jeu" class="cache">
+      <div id="affichage-etape">
+        <span>Étape :</span>
+        <span id="valeur-etape">1</span><span>/5</span>
+      </div>
+      <div id="affichage-score">
+        <span>Score :</span>
+        <span id="valeur-score">0</span>
+      </div>
+      <div id="affichage-vies">
+        <span>Vies :</span>
+        <span id="valeur-vies">3</span>
+      </div>
+    </div>
+
+    <!-- Boutons Pause / Quitter (en bas du conteneur, séparés du score) -->
+    <div id="boutons-jeu" class="cache">
+      <button type="button" id="bouton-pause">Pause</button>
+      <button type="button" id="bouton-quitter">Quitter</button>
+    </div>
+
+    <!-- Overlay Pause -->
+    <div id="ecran-pause" class="overlay cache">
+      <div class="overlay-contenu overlay-pause">
+        <h2>Pause</h2>
+        <button type="button" id="bouton-reprendre">Reprendre</button>
+      </div>
+    </div>
+
+    <!-- Écran de game over -->
+    <div id="ecran-game-over" class="cache">
+      <h2>Game Over</h2>
+      <p>Score final : <span id="score-final">0</span></p>
+      <button id="bouton-rejouer">Rejouer</button>
+    </div>
+
+    <!-- Écran de victoire -->
+    <div id="ecran-victoire" class="cache">
+      <h2>Victoire !</h2>
+      <p>Tu as réussi les 5 étapes.</p>
+      <p>Score final : <span id="score-victoire">0</span></p>
+      <button id="bouton-rejouer-victoire">Rejouer</button>
+    </div>
+  </div>
+
+  <script src="jeu.js"></script>
+</body>
+</html>
