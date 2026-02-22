@@ -59,6 +59,10 @@ const config = {
   viesMax: 5,
 };
 
+// Hauteur de référence (ex. mobile ~390px) : pour que le temps de traversée d'un obstacle
+// (haut→bas) soit identique sur tous les écrans, on scale la vitesse selon config.hauteurZone
+const REF_HAUTEUR_ZONE = 390;
+
 // Paramètres par étape : vitesse haute, dernier niveau invivable
 const parametresEtapes = [
   { vitesse: 6, intervalle: 65, fond: '#0d0d1a', secondaire: '#1a1a2e' },   // Étape 1
@@ -315,7 +319,8 @@ function dessinerObstacles() {
 function mettreAJourObstacles(factor) {
   const etape = obtenirEtapeActuelle();
   const vitesse = parametresEtapes[etape - 1].vitesse;
-  const delta = (factor !== undefined ? factor : 1) * vitesse;
+  const scale = config.hauteurZone > 0 ? config.hauteurZone / REF_HAUTEUR_ZONE : 1;
+  const delta = (factor !== undefined ? factor : 1) * vitesse * scale;
   for (let i = listeObstacles.length - 1; i >= 0; i--) {
     const obs = listeObstacles[i];
     obs.decalageY += delta;
@@ -341,7 +346,8 @@ function spawnEtoile() {
 function mettreAJourEtoiles(factor) {
   const etape = obtenirEtapeActuelle();
   const vitesse = parametresEtapes[etape - 1].vitesse + 0.5; // Légèrement plus rapide que les obstacles
-  const delta = (factor !== undefined ? factor : 1) * vitesse;
+  const scale = config.hauteurZone > 0 ? config.hauteurZone / REF_HAUTEUR_ZONE : 1;
+  const delta = (factor !== undefined ? factor : 1) * vitesse * scale;
   for (let i = listeEtoiles.length - 1; i >= 0; i--) {
     const etoile = listeEtoiles[i];
     etoile.decalageY += delta;
