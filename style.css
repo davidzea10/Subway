@@ -75,7 +75,74 @@ body {
   cursor: none;
 }
 
-/* Écran d'accueil */
+/* Écran splash / entrée — logo de haut en bas, bouton superposé (style mobile) */
+#ecran-splash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0a14;
+  z-index: 12;
+}
+
+.logo-splash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* PC : réduire l'image splash (sur mobile elle reste plein écran) */
+@media (min-width: 769px) {
+  #ecran-splash .logo-splash {
+    width: 65%;
+    height: 65%;
+    left: 50%;
+    top: 50%;
+    margin-left: 0;
+    margin-top: 0;
+    transform: translate(-50%, -50%);
+    object-fit: contain;
+  }
+}
+
+.cta-commencer {
+  position: absolute;
+  bottom: max(14%, env(safe-area-inset-bottom, 14px));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 14px 48px;
+  font-size: 1.25rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #00d4ff, #0099cc);
+  color: #0a0a14;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 6px 30px rgba(0, 212, 255, 0.5);
+  transition: transform 0.15s, box-shadow 0.15s;
+  z-index: 2;
+}
+
+.cta-commencer:hover {
+  transform: translateX(-50%) scale(1.05);
+  box-shadow: 0 8px 40px rgba(0, 212, 255, 0.6);
+}
+
+/* Mobile : bouton Commencer plus bas */
+@media (max-width: 768px), (max-height: 700px) {
+  .cta-commencer {
+    bottom: max(4%, env(safe-area-inset-bottom, 14px));
+  }
+}
+
+/* Écran d'accueil — style jeu vidéo (Phase 1) */
 #ecran-accueil {
   position: absolute;
   top: 0;
@@ -86,39 +153,39 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(180deg, rgba(26, 26, 46, 0.95) 0%, rgba(13, 13, 26, 0.98) 100%);
+  background: linear-gradient(160deg, #0a0a14 0%, #1a1a2e 40%, #0d1520 100%);
   z-index: 10;
   padding: 24px;
+  overflow: visible;
 }
 
-#ecran-accueil h1 {
-  font-size: 2.2rem;
+.accueil-contenu-principal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+  justify-content: center;
+}
+
+.logo-accueil {
+  font-size: 2.8rem;
+  font-weight: 800;
   margin-bottom: 8px;
-  background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+  letter-spacing: 0.05em;
+  background: linear-gradient(135deg, #00d4ff 0%, #7b2cbf 50%, #ff6b6b 100%);
+  background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-.titre-dbz {
-  font-size: 0.95em;
-  letter-spacing: 0.08em;
-  opacity: 0.95;
+  text-shadow: 0 0 40px rgba(0, 212, 255, 0.3);
 }
 
 .sous-titre {
-  color: #888;
-  margin-bottom: 32px;
-  font-size: 1rem;
-}
-
-.instructions {
-  background: rgba(0, 0, 0, 0.4);
-  padding: 20px 28px;
-  border-radius: 12px;
-  margin-bottom: 32px;
-  text-align: center;
-  line-height: 2;
+  color: #a0a0b0;
+  margin-bottom: 28px;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
 }
 
 .champ-nom {
@@ -129,18 +196,18 @@ body {
 .champ-nom label {
   display: block;
   margin-bottom: 8px;
-  color: #aaa;
-  font-size: 0.95rem;
+  color: #888;
+  font-size: 0.9rem;
 }
 
 .champ-nom input {
   width: 100%;
-  max-width: 220px;
-  padding: 10px 14px;
+  max-width: 240px;
+  padding: 12px 16px;
   font-size: 1rem;
   border: 2px solid #2a2a4a;
-  border-radius: 10px;
-  background: #1a1a2e;
+  border-radius: 12px;
+  background: rgba(26, 26, 46, 0.8);
   color: #fff;
   text-align: center;
 }
@@ -148,21 +215,100 @@ body {
 .champ-nom input:focus {
   outline: none;
   border-color: #00d4ff;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.25);
 }
 
-.boutons-accueil {
+.cta-principal {
+  padding: 16px 48px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #00d4ff, #0099cc);
+  color: #0a0a14;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 6px 30px rgba(0, 212, 255, 0.5);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.cta-principal:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 40px rgba(0, 212, 255, 0.6);
+}
+
+.bouton-retour {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  padding: 10px 18px;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  cursor: pointer;
+  z-index: 100;
+  pointer-events: auto;
+  transition: background 0.15s, color 0.15s;
+}
+
+.bouton-retour:hover {
+  background: rgba(0, 212, 255, 0.2);
+  color: #fff;
+}
+
+.accueil-menu-zone {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.bouton-menu-toggle {
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: #aaa;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.bouton-menu-toggle:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.panel-menu-accueil {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  padding: 12px;
+  background: rgba(13, 13, 26, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+  z-index: 15;
 }
 
-.boutons-accueil button {
-  padding: 10px 24px;
-  font-size: 0.95rem;
+.panel-menu-accueil button {
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  border-radius: 8px;
+  color: #ccc;
+  cursor: pointer;
 }
 
-#bouton-continuer {
-  margin-bottom: 0;
+.panel-menu-accueil button:hover {
+  background: rgba(0, 212, 255, 0.15);
+  color: #fff;
 }
 
 /* Écran choix personnage */
@@ -179,6 +325,7 @@ body {
   background: linear-gradient(180deg, rgba(26, 26, 46, 0.98) 0%, rgba(13, 13, 26, 0.98) 100%);
   z-index: 10;
   padding: 20px;
+  overflow: visible;
 }
 
 #ecran-choix-personnage h2 {
@@ -596,7 +743,8 @@ button:active {
   padding: 24px;
 }
 
-#ecran-game-over h2 {
+#ecran-game-over h2,
+#message-gameover-lingala {
   color: #ff6b6b;
   font-size: 2rem;
   margin-bottom: 16px;
@@ -653,6 +801,229 @@ button:active {
 #score-victoire {
   color: #00d4ff;
   font-weight: bold;
+}
+
+/* ============== ANIMATIONS (animations.js) ============== */
+.alerte-vies {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  z-index: 20;
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #ff6b6b;
+  text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+  z-index: 20;
+  animation: pulse-alerte 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-alerte {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0.9; transform: translate(-50%, -50%) scale(1.05); }
+}
+
+/* Vertige (obstacle frappe) */
+#conteneur-jeu.effet-vertige {
+  animation: vertige 1.2s ease-out;
+}
+
+@keyframes vertige {
+  0% { transform: rotate(0deg); filter: blur(0); }
+  15% { transform: rotate(-3deg); filter: blur(2px); }
+  30% { transform: rotate(2deg); filter: blur(3px); }
+  45% { transform: rotate(-2deg); filter: blur(2px); }
+  60% { transform: rotate(1deg); filter: blur(1px); }
+  100% { transform: rotate(0deg); filter: blur(0); }
+}
+
+/* Bénédiction (étoile) */
+#conteneur-jeu.effet-benefiction {
+  animation: benefiction 0.8s ease-out;
+}
+
+@keyframes benefiction {
+  0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.6); }
+  50% { box-shadow: 0 0 40px 15px rgba(255, 215, 0, 0.4); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+}
+
+/* Dernière vie : vignette rouge pulsante */
+#conteneur-jeu.effet-derniere-vie {
+  animation: vignette-rouge 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes vignette-rouge {
+  from { box-shadow: 0 0 40px rgba(0, 150, 255, 0.3), inset 0 0 80px 30px rgba(255, 0, 0, 0.2); }
+  to { box-shadow: 0 0 40px rgba(0, 150, 255, 0.3), inset 0 0 120px 50px rgba(255, 0, 0, 0.35); }
+}
+
+/* Bouton commentaires en jeu */
+.bouton-commentaires-jeu {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: 130px;
+  padding: 10px 16px;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  cursor: pointer;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bouton-commentaires-jeu:hover {
+  background: rgba(0, 212, 255, 0.25);
+}
+
+.badge-commentaires {
+  background: #ff6b6b;
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Overlay commentaires */
+.overlay-commentaires {
+  max-width: 420px;
+}
+
+.liste-commentaires {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.commentaire-item {
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  border-left: 3px solid #00d4ff;
+}
+
+.commentaire-item .commentaire-pseudo {
+  font-weight: bold;
+  color: #00d4ff;
+  font-size: 0.9rem;
+}
+
+.commentaire-item .commentaire-texte {
+  color: #ddd;
+  font-size: 0.95rem;
+  margin-top: 4px;
+}
+
+.commentaire-item .commentaire-date {
+  font-size: 0.75rem;
+  color: #888;
+  margin-top: 4px;
+}
+
+.commentaire-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.bouton-reaction {
+  padding: 4px 10px;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  color: #aaa;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.bouton-reaction:hover {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: rgba(0, 212, 255, 0.4);
+  color: #fff;
+}
+
+.bouton-reaction.actif {
+  background: rgba(0, 212, 255, 0.25);
+  border-color: #00d4ff;
+  color: #fff;
+}
+
+.commentaire-qui-reagit {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.boutons-game-over .bouton-commentaires-gameover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #00d4ff;
+  border: 1px solid rgba(0, 212, 255, 0.4);
+}
+
+.boutons-game-over .bouton-commentaires-gameover:hover {
+  background: rgba(0, 212, 255, 0.2);
+}
+
+.form-commentaire {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form-commentaire input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid #2a2a4a;
+  border-radius: 10px;
+  background: rgba(26, 26, 46, 0.9);
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.form-commentaire input:focus {
+  outline: none;
+  border-color: #00d4ff;
+}
+
+.form-commentaire button {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #00d4ff, #0099cc);
+  color: #0a0a14;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Place au game over */
+.place-gameover {
+  color: #ffd700;
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+
+/* Classement : indicateur joueur courant */
+.card-classement.joueur-courant {
+  background: rgba(0, 212, 255, 0.2);
+  border: 2px solid #00d4ff;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+.card-classement.joueur-courant .card-pseudo {
+  color: #00d4ff;
 }
 
 .cache {

@@ -6,6 +6,7 @@
 
 // ============== RÉFÉRENCES DOM ==============
 const zoneJeu = document.getElementById('zone-jeu');
+const ecranSplash = document.getElementById('ecran-splash');
 const ecranAccueil = document.getElementById('ecran-accueil');
 const ecranChoixPersonnage = document.getElementById('ecran-choix-personnage');
 const ecranGameOver = document.getElementById('ecran-game-over');
@@ -392,6 +393,9 @@ function collisionPersonnageEtoile() {
       vies = Math.min(config.viesMax, vies + 1);
       valeurVies.textContent = vies;
       listeEtoiles.splice(i, 1);
+      if (typeof AnimationsMboka !== 'undefined' && AnimationsMboka.effetBenefiction) {
+        AnimationsMboka.effetBenefiction();
+      }
       return;
     }
   }
@@ -511,6 +515,9 @@ function boucleJeu() {
     const degats = obsTouche.type === 'parasite' ? 2 : 1;
     vies = Math.max(0, vies - degats);
     valeurVies.textContent = vies;
+    if (typeof AnimationsMboka !== 'undefined' && AnimationsMboka.effetVertige) {
+      AnimationsMboka.effetVertige(1200);
+    }
     const { haut: hautCellulePerso, bas: basCellulePerso } = obtenirCellulePerso();
     listeObstacles = listeObstacles.filter((obs) => {
       if (obs.colonne !== colonnePersonnage) return true;
@@ -522,6 +529,9 @@ function boucleJeu() {
     if (vies <= 0) {
       finPartie();
       return;
+    }
+    if (vies === 1 && typeof AnimationsMboka !== 'undefined' && AnimationsMboka.alerteDerniereVie) {
+      AnimationsMboka.alerteDerniereVie();
     }
   }
 
@@ -568,7 +578,10 @@ function demarrerPartie() {
   ecranPause.classList.add('cache');
   document.getElementById('interface-jeu').classList.remove('cache');
   document.getElementById('boutons-jeu').classList.remove('cache');
+  const btnComm = document.getElementById('bouton-commentaires-jeu');
+  if (btnComm) btnComm.classList.remove('cache');
 
+  demarrerAbonnementCommentaires();
   requestAnimationFrame(boucleJeu);
 }
 
@@ -585,17 +598,46 @@ function reprendrePartie() {
 function quitterPartie() {
   enCours = false;
   enPause = false;
+  arreterAbonnementCommentaires();
   document.getElementById('interface-jeu').classList.add('cache');
   document.getElementById('boutons-jeu').classList.add('cache');
+  const btnComm = document.getElementById('bouton-commentaires-jeu');
+  if (btnComm) btnComm.classList.add('cache');
   ecranPause.classList.add('cache');
   ecranAccueil.classList.remove('cache');
 }
 
-function finPartie() {
+const messagesGameOverLingala = {
+  1: 'Okufi',
+  2: 'Olali',
+  3: 'Ozui te',
+  4: 'Olali',
+  5: 'O rater',
+};
+
+async function finPartie() {
   enCours = false;
+  const btnComm = document.getElementById('bouton-commentaires-jeu');
+  if (btnComm) btnComm.classList.add('cache');
+  majBoutonCommentairesGameOver();
   scoreFinal.textContent = score;
+  const etape = obtenirEtapeActuelle();
+  const msgLingala = messagesGameOverLingala[etape] || 'Okufi';
+  const elMsg = document.getElementById('message-gameover-lingala');
+  if (elMsg) elMsg.textContent = msgLingala;
   enregistrerDansHistorique(nomJoueur, score, false);
-  enregistrerScoreEnLigne(nomJoueur, score, false);
+  await enregistrerScoreEnLigne(nomJoueur, score, false);
+  const place = await obtenirPlaceJoueur(nomJoueur);
+  const elPlace = document.getElementById('place-gameover');
+  const elValeurPlace = document.getElementById('valeur-place');
+  if (elPlace && elValeurPlace) {
+    if (place !== null) {
+      elValeurPlace.textContent = `#${place}`;
+      elPlace.classList.remove('cache');
+    } else {
+      elPlace.classList.add('cache');
+    }
+  }
   document.getElementById('interface-jeu').classList.add('cache');
   document.getElementById('boutons-jeu').classList.add('cache');
   ecranGameOver.classList.remove('cache');
@@ -603,6 +645,9 @@ function finPartie() {
 
 function finVictoire() {
   enCours = false;
+  const btnComm = document.getElementById('bouton-commentaires-jeu');
+  if (btnComm) btnComm.classList.add('cache');
+  majBoutonCommentairesGameOver();
   scoreVictoire.textContent = score;
   enregistrerDansHistorique(nomJoueur, score, true);
   enregistrerScoreEnLigne(nomJoueur, score, true);
@@ -631,16 +676,21 @@ function gameOverVersClassement() {
 
 function gameOverQuitter() {
   enCours = false;
+  arreterAbonnementCommentaires();
   ecranGameOver.classList.add('cache');
+  pageCommentaires.classList.add('cache');
   document.getElementById('interface-jeu').classList.add('cache');
   document.getElementById('boutons-jeu').classList.add('cache');
   ecranAccueil.classList.remove('cache');
 }
 
 // ============== ÉVÉNEMENTS CLAVIER ==============
-// Un appui = une case. On ignore la répétition (e.repeat) pour ne pas sauter de cases.
+// Un appui = une case. On ignore la répétition (e.repeat) pour ne pas déplacer encore.
 document.addEventListener('keydown', (e) => {
   if (!enCours) return;
+  // Ne pas bloquer la frappe dans les champs de saisie (commentaires, remarques, pseudo)
+  const target = e.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
   if (e.repeat) return; // Touche maintenue : ne pas déplacer encore
   e.preventDefault();
 
@@ -736,6 +786,165 @@ function afficherHistorique() {
   }
 }
 
+// ============== COMMENTAIRES TEMPS RÉEL ==============
+let abonnementCommentaires = null;
+let commentairesNonLus = 0;
+
+function majBoutonCommentairesGameOver() {
+  const btn = document.getElementById('bouton-commentaires-gameover');
+  if (!btn) return;
+  btn.textContent = commentairesNonLus > 0 ? `💬 Commentaires (${commentairesNonLus})` : '💬 Commentaires';
+}
+
+function demarrerAbonnementCommentaires() {
+  arreterAbonnementCommentaires();
+  commentairesNonLus = 0;
+  mettreAJourBadgeCommentaires();
+  if (!supabaseClient) return;
+  try {
+    chargerCommentaires();
+    abonnementCommentaires = supabaseClient
+      .channel('commentaires-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'commentaires' }, () => {
+        commentairesNonLus++;
+        mettreAJourBadgeCommentaires();
+        majBoutonCommentairesGameOver();
+        chargerCommentaires();
+      })
+      .subscribe();
+  } catch (e) {}
+}
+
+function arreterAbonnementCommentaires() {
+  if (abonnementCommentaires) {
+    try { supabaseClient.removeChannel(abonnementCommentaires); } catch (e) {}
+    abonnementCommentaires = null;
+  }
+  commentairesNonLus = 0;
+}
+
+function mettreAJourBadgeCommentaires() {
+  const badge = document.getElementById('badge-commentaires');
+  if (badge) {
+    if (commentairesNonLus > 0) {
+      badge.textContent = commentairesNonLus > 99 ? '99+' : String(commentairesNonLus);
+      badge.classList.remove('cache');
+    } else {
+      badge.classList.add('cache');
+    }
+  }
+  majBoutonCommentairesGameOver();
+}
+
+const TYPES_REACTIONS = [
+  { id: 'like', emoji: '👍', label: 'J\'aime' },
+  { id: 'dislike', emoji: '👎', label: 'J\'aime pas' },
+  { id: 'coeur', emoji: '❤️', label: 'Cœur' },
+  { id: 'coeur_brise', emoji: '💔', label: 'Cœur brisé' },
+  { id: 'mort_de_rire', emoji: '😂', label: 'Mort de rire' },
+];
+
+async function chargerCommentaires() {
+  const liste = document.getElementById('liste-commentaires');
+  if (!liste) return;
+  if (!supabaseClient) {
+    liste.innerHTML = '<p class="message-info">Supabase non configuré.</p>';
+    return;
+  }
+  try {
+    const { data: comments, error: errC } = await supabaseClient
+      .from('commentaires')
+      .select('id, pseudo, texte, created_at')
+      .order('created_at', { ascending: true })
+      .limit(50);
+    if (errC) throw errC;
+    if (!comments || comments.length === 0) {
+      liste.innerHTML = '<p class="message-info">Aucun commentaire. Sois le premier !</p>';
+      return;
+    }
+    const ids = comments.map((c) => c.id);
+    let reactions = [];
+    try {
+      const res = await supabaseClient.from('commentaire_reactions').select('commentaire_id, pseudo, type').in('commentaire_id', ids);
+      reactions = res.data || [];
+    } catch (_) {}
+    const reactionsParCommentaire = {};
+    reactions.forEach((r) => {
+      if (!reactionsParCommentaire[r.commentaire_id]) reactionsParCommentaire[r.commentaire_id] = [];
+      reactionsParCommentaire[r.commentaire_id].push({ pseudo: r.pseudo, type: r.type });
+    });
+    const monPseudo = (nomJoueur || '').trim() || null;
+    liste.innerHTML = comments.map((c) => {
+      const pseudo = c.pseudo || 'Anonyme';
+      const date = c.created_at ? new Date(c.created_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      const reacts = reactionsParCommentaire[c.id] || [];
+      const parType = {};
+      reacts.forEach((r) => {
+        if (!parType[r.type]) parType[r.type] = [];
+        parType[r.type].push(r.pseudo);
+      });
+      const maReaction = monPseudo ? reacts.find((r) => r.pseudo === monPseudo) : null;
+      const boutonsReactions = TYPES_REACTIONS.map((t) => {
+        const count = (parType[t.id] || []).length;
+        const actif = maReaction && maReaction.type === t.id ? ' actif' : '';
+        return `<button type="button" class="bouton-reaction${actif}" data-commentaire="${c.id}" data-type="${t.id}" title="${t.label}">${t.emoji} ${count > 0 ? count : ''}</button>`;
+      }).join('');
+      const detailsReactions = Object.entries(parType)
+        .filter(([, users]) => users.length > 0)
+        .map(([typeId, users]) => {
+          const t = TYPES_REACTIONS.find((x) => x.id === typeId);
+          const emoji = t ? t.emoji : '';
+          return `${emoji} ${users.join(', ')}`;
+        })
+        .join(' · ');
+      const blocQuiAReagi = detailsReactions ? `<div class="commentaire-qui-reagit">${escapeHtml(detailsReactions)}</div>` : '';
+      return `<div class="commentaire-item" data-id="${c.id}">
+        <span class="commentaire-pseudo">${escapeHtml(pseudo)}</span>
+        <p class="commentaire-texte">${escapeHtml(c.texte || '')}</p>
+        <span class="commentaire-date">${escapeHtml(date)}</span>
+        <div class="commentaire-reactions">${boutonsReactions}</div>
+        ${blocQuiAReagi}
+      </div>`;
+    }).join('');
+    liste.scrollTop = liste.scrollHeight;
+  } catch (e) {
+    liste.innerHTML = '<p class="message-info erreur">Erreur chargement.</p>';
+  }
+}
+
+async function togglerReaction(commentaireId, typeReaction) {
+  if (!supabaseClient) return;
+  const pseudo = (nomJoueur || '').trim();
+  if (!pseudo) {
+    alert('Saisis ton pseudo (écran accueil) pour réagir aux commentaires.');
+    return;
+  }
+  try {
+    const { data: row } = await supabaseClient
+      .from('commentaire_reactions')
+      .select('type')
+      .eq('commentaire_id', commentaireId)
+      .eq('pseudo', pseudo)
+      .maybeSingle();
+    if (row) {
+      if (row.type === typeReaction) {
+        await supabaseClient.from('commentaire_reactions').delete().eq('commentaire_id', commentaireId).eq('pseudo', pseudo);
+      } else {
+        await supabaseClient.from('commentaire_reactions').update({ type: typeReaction }).eq('commentaire_id', commentaireId).eq('pseudo', pseudo);
+      }
+    } else {
+      await supabaseClient.from('commentaire_reactions').insert({ commentaire_id: commentaireId, pseudo, type: typeReaction });
+    }
+    chargerCommentaires();
+  } catch (e) {}
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
 // ============== SUPABASE : scores en ligne (un pseudo = une ligne, meilleur score conservé) ==============
 async function enregistrerScoreEnLigne(pseudo, points, victoire) {
   const nom = (pseudo && pseudo.trim()) ? pseudo.trim() : 'Joueur';
@@ -747,6 +956,23 @@ async function enregistrerScoreEnLigne(pseudo, points, victoire) {
       p_victoire: !!victoire,
     });
   } catch (e) {}
+}
+
+// ============== PLACE DU JOUEUR (pour game over) ==============
+async function obtenirPlaceJoueur(pseudo) {
+  const nom = (pseudo && pseudo.trim()) ? pseudo.trim() : 'Joueur';
+  if (!supabaseClient) return null;
+  try {
+    const { data, error } = await supabaseClient
+      .from('scores')
+      .select('pseudo, score')
+      .order('score', { ascending: false });
+    if (error) return null;
+    const idx = (data || []).findIndex((r) => String(r.pseudo).toLowerCase() === nom.toLowerCase());
+    return idx >= 0 ? idx + 1 : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 // ============== CLASSEMENT (Supabase) ==============
@@ -819,20 +1045,30 @@ async function chargerClassement(filtre) {
       listeClassement.innerHTML = '<p class="classement-vide">Aucun score pour ce filtre.</p>';
       return;
     }
+    const nomJoueurLower = (nomJoueur || '').toLowerCase();
     const medals = ['🥇', '🥈', '🥉'];
     listeClassement.innerHTML = rows.map((r, idx) => {
       const rang = idx + 1;
       const medaille = rang <= 3 ? medals[rang - 1] : '';
       const dateStr = r.created_at ? new Date(r.created_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
-      return `<div class="card-classement ${rang <= 3 ? 'card-podium' : ''}" data-rang="${rang}">
+      const isJoueurCourant = String(r.pseudo || '').toLowerCase() === nomJoueurLower;
+      return `<div class="card-classement ${rang <= 3 ? 'card-podium' : ''} ${isJoueurCourant ? 'joueur-courant' : ''}" data-rang="${rang}" data-pseudo="${escapeHtml(r.pseudo || '')}">
         <span class="card-rang">${medaille || '#' + rang}</span>
         <div class="card-infos">
-          <span class="card-pseudo">${r.pseudo}</span>
+          <span class="card-pseudo">${escapeHtml(r.pseudo || '')}${isJoueurCourant ? ' (toi)' : ''}</span>
           <span class="card-meta">${dateStr}${r.victoire ? ' · ✓ Victoire' : ''}</span>
         </div>
         <span class="card-score">${r.score} <span class="card-pts">pts</span></span>
       </div>`;
     }).join('');
+
+    // Scroll vers le joueur courant
+    const cardJoueur = listeClassement.querySelector('.joueur-courant');
+    if (cardJoueur) {
+      requestAnimationFrame(() => {
+        cardJoueur.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
   } catch (e) {
     messageChargementClassement.textContent = 'Impossible de charger le classement.';
     messageChargementClassement.classList.remove('cache');
@@ -897,7 +1133,27 @@ async function envoyerRemarque() {
 }
 
 // ============== ACCUEIL : Aide, Historique, Classement, Remarques, Continuer, Choix personnage ==============
+const panelMenuAccueil = document.getElementById('panel-menu-accueil');
+const boutonMenuToggle = document.getElementById('bouton-menu-toggle');
+
+function fermerMenuAccueil() {
+  if (panelMenuAccueil) panelMenuAccueil.classList.add('cache');
+}
+
+boutonMenuToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  panelMenuAccueil.classList.toggle('cache');
+});
+
+document.addEventListener('click', (e) => {
+  if (panelMenuAccueil && !panelMenuAccueil.classList.contains('cache') &&
+      !panelMenuAccueil.contains(e.target) && !boutonMenuToggle.contains(e.target)) {
+    fermerMenuAccueil();
+  }
+});
+
 document.getElementById('bouton-aide').addEventListener('click', () => {
+  fermerMenuAccueil();
   pageAide.classList.remove('cache');
 });
 document.getElementById('fermer-aide').addEventListener('click', () => {
@@ -905,6 +1161,7 @@ document.getElementById('fermer-aide').addEventListener('click', () => {
 });
 
 document.getElementById('bouton-historique').addEventListener('click', () => {
+  fermerMenuAccueil();
   afficherHistorique();
   pageHistorique.classList.remove('cache');
 });
@@ -912,11 +1169,15 @@ document.getElementById('fermer-historique').addEventListener('click', () => {
   pageHistorique.classList.add('cache');
 });
 
-document.getElementById('bouton-classement').addEventListener('click', ouvrirClassement);
+document.getElementById('bouton-classement').addEventListener('click', () => {
+  fermerMenuAccueil();
+  ouvrirClassement();
+});
 document.getElementById('fermer-classement').addEventListener('click', fermerClassement);
 filtreClassement.addEventListener('change', () => chargerClassement(filtreClassement.value));
 
 document.getElementById('bouton-remarques').addEventListener('click', () => {
+  fermerMenuAccueil();
   pageRemarques.classList.remove('cache');
   if (inputRemarquePseudo && !inputRemarquePseudo.value && nomJoueur) inputRemarquePseudo.value = nomJoueur;
   messageEnvoiRemarque.classList.add('cache');
@@ -924,17 +1185,84 @@ document.getElementById('bouton-remarques').addEventListener('click', () => {
 document.getElementById('fermer-remarques').addEventListener('click', () => pageRemarques.classList.add('cache'));
 boutonEnvoyerRemarque.addEventListener('click', envoyerRemarque);
 
+const pageCommentaires = document.getElementById('page-commentaires');
+const inputCommentaire = document.getElementById('input-commentaire');
+const boutonEnvoyerCommentaire = document.getElementById('bouton-envoyer-commentaire');
+
+function ouvrirCommentaires() {
+  if (enCours && !enPause) mettreEnPause();
+  pageCommentaires.classList.remove('cache');
+  chargerCommentaires();
+  if (inputCommentaire) inputCommentaire.focus();
+}
+
+function fermerCommentaires() {
+  commentairesNonLus = 0;
+  mettreAJourBadgeCommentaires();
+  pageCommentaires.classList.add('cache');
+  if (enCours && enPause) reprendrePartie();
+}
+
+document.getElementById('bouton-commentaires-jeu')?.addEventListener('click', ouvrirCommentaires);
+
+document.getElementById('bouton-commentaires-gameover')?.addEventListener('click', () => {
+  ouvrirCommentaires();
+});
+
+document.getElementById('fermer-commentaires')?.addEventListener('click', fermerCommentaires);
+
+document.getElementById('liste-commentaires')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.bouton-reaction');
+  if (!btn) return;
+  const commentaireId = btn.getAttribute('data-commentaire');
+  const typeReaction = btn.getAttribute('data-type');
+  if (commentaireId && typeReaction) togglerReaction(commentaireId, typeReaction);
+});
+
+boutonEnvoyerCommentaire?.addEventListener('click', async () => {
+  const texte = (inputCommentaire?.value || '').trim();
+  if (!texte || !supabaseClient) return;
+  try {
+    await supabaseClient.from('commentaires').insert({
+      pseudo: nomJoueur || null,
+      texte,
+    });
+    inputCommentaire.value = '';
+    chargerCommentaires();
+  } catch (e) {}
+});
+
 document.getElementById('bouton-apropos').addEventListener('click', () => {
+  fermerMenuAccueil();
   pageApropos.classList.remove('cache');
 });
 document.getElementById('fermer-apropos').addEventListener('click', () => {
   pageApropos.classList.add('cache');
 });
 
+document.getElementById('bouton-commencer').addEventListener('click', () => {
+  ecranSplash.classList.add('cache');
+  ecranAccueil.classList.remove('cache');
+});
+
+// Boutons retour (délégation pour fiabilité)
+document.getElementById('conteneur-jeu').addEventListener('click', (e) => {
+  const target = e.target.closest('#bouton-retour-accueil, #bouton-retour-personnage');
+  if (!target) return;
+  e.preventDefault();
+  if (target.id === 'bouton-retour-accueil') {
+    ecranAccueil.classList.add('cache');
+    ecranSplash.classList.remove('cache');
+  } else if (target.id === 'bouton-retour-personnage') {
+    ecranChoixPersonnage.classList.add('cache');
+    ecranAccueil.classList.remove('cache');
+  }
+});
+
 boutonContinuer.addEventListener('click', () => {
   const nom = (inputNom.value || '').trim();
   if (!nom) {
-    alert('Entre ton pseudo pour continuer.');
+    alert('Saisis ton pseudo pour continuer.');
     return;
   }
   nomJoueur = nom;
