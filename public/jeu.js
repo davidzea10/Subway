@@ -284,8 +284,32 @@ function obtenirEtapeActuelle() {
 const typesObstaclesNormaux = ['#ffa502', '#7b2cbf', '#00b894'];
 const COULEUR_PARASITE = '#cc0000';
 
+// Colonnes occupées en haut (rangs 0-2) : pour éviter que étoiles et obstacles se superposent
+function colonnesOccupeesParObstaclesHaut() {
+  const occupees = new Set();
+  listeObstacles.forEach((obs) => {
+    if (obs.rang <= 2) occupees.add(obs.colonne);
+  });
+  return occupees;
+}
+
+function colonnesOccupeesParEtoilesHaut() {
+  const occupees = new Set();
+  listeEtoiles.forEach((etoile) => {
+    if (etoile.rang <= 2) occupees.add(etoile.colonne);
+  });
+  return occupees;
+}
+
 function spawnObstacle() {
-  const colonne = Math.floor(Math.random() * config.nombreLignes);
+  const colonnesEviter = colonnesOccupeesParEtoilesHaut();
+  const colonnesLibres = [];
+  for (let c = 0; c < config.nombreLignes; c++) {
+    if (!colonnesEviter.has(c)) colonnesLibres.push(c);
+  }
+  const colonne = colonnesLibres.length > 0
+    ? colonnesLibres[Math.floor(Math.random() * colonnesLibres.length)]
+    : Math.floor(Math.random() * config.nombreLignes);
   const etape = obtenirEtapeActuelle();
   const parametres = parametresEtapes[etape - 1];
   // À partir de l'étape 2, possibilité de spawn un parasite (rouge)
@@ -337,8 +361,17 @@ function mettreAJourObstacles(factor) {
 
 // ============== ÉTOILES (récompense +1 vie, max 5) ==============
 function spawnEtoile() {
-  const colonne = Math.floor(Math.random() * config.nombreLignes);
-  listeEtoiles.push({ colonne, rang: 0, decalageY: 0 });
+  const colonnesEviter = colonnesOccupeesParObstaclesHaut();
+  const colonnesLibres = [];
+  for (let c = 0; c < config.nombreLignes; c++) {
+    if (!colonnesEviter.has(c)) colonnesLibres.push(c);
+  }
+  const colonne = colonnesLibres.length > 0
+    ? colonnesLibres[Math.floor(Math.random() * colonnesLibres.length)]
+    : Math.floor(Math.random() * config.nombreLignes);
+  // Si aucune colonne libre, décaler légèrement pour ne pas être pile sur un obstacle
+  const decalageY = colonnesLibres.length > 0 ? 0 : hauteurCellule * 0.5;
+  listeEtoiles.push({ colonne, rang: 0, decalageY });
   etoilesApparuesCetteEtape++;
   scoreAuDernierSpawnEtoile = score;
 }

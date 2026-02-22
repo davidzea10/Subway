@@ -28,8 +28,19 @@
   }
 
   // ============== BÉNÉDICTION (réception étoile) ==============
+  // Overlay au premier plan (z-index élevé) pour être bien visible, surtout sur mobile
   function effetBenefiction() {
     conteneurJeu.classList.add('effet-benefiction');
+    const overlay = document.createElement('div');
+    overlay.className = 'overlay-benefiction';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.innerHTML = '<span class="overlay-benefiction-texte">★ +1 vie</span>';
+    conteneurJeu.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+    setTimeout(() => {
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.remove(), 400);
+    }, 600);
     setTimeout(() => conteneurJeu.classList.remove('effet-benefiction'), 800);
   }
 

@@ -848,15 +848,46 @@ button:active {
   100% { transform: rotate(0deg); filter: blur(0); }
 }
 
-/* Bénédiction (étoile) */
+/* Bénédiction (étoile) — overlay au premier plan pour visibilité sur tous les écrans */
 #conteneur-jeu.effet-benefiction {
   animation: benefiction 0.8s ease-out;
 }
 
 @keyframes benefiction {
-  0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.6); }
-  50% { box-shadow: 0 0 40px 15px rgba(255, 215, 0, 0.4); }
+  0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.5); }
+  50% { box-shadow: 0 0 50px 20px rgba(255, 215, 0, 0.35); }
   100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+}
+
+.overlay-benefiction {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.35) 0%, rgba(255, 170, 0, 0.2) 40%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+
+.overlay-benefiction.visible {
+  opacity: 1;
+}
+
+.overlay-benefiction-texte {
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  font-weight: bold;
+  color: #ffd700;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.9), 0 0 40px rgba(255, 215, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8);
+  animation: pulse-benefiction 0.6s ease-out;
+}
+
+@keyframes pulse-benefiction {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* Dernière vie : vignette rouge pulsante */
