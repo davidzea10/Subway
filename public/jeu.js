@@ -74,6 +74,8 @@ let enPause = false;
 let score = 0;
 let vies = config.viesInitiales;
 let frameActuelle = 0;
+let lastFrameTime = 0;
+let tempsDepuisDernierSpawn = 0;
 
 // Position du personnage : colonne (0 à nombreLignes-1), rang (0 à nombreRangs-1)
 // Rang 0 = en bas au milieu au démarrage
@@ -310,12 +312,13 @@ function dessinerObstacles() {
   });
 }
 
-function mettreAJourObstacles() {
+function mettreAJourObstacles(factor) {
   const etape = obtenirEtapeActuelle();
   const vitesse = parametresEtapes[etape - 1].vitesse;
+  const delta = (factor !== undefined ? factor : 1) * vitesse;
   for (let i = listeObstacles.length - 1; i >= 0; i--) {
     const obs = listeObstacles[i];
-    obs.decalageY += vitesse;
+    obs.decalageY += delta;
     if (obs.decalageY >= hauteurCellule) {
       obs.decalageY -= hauteurCellule;
       obs.rang += 1;
@@ -335,12 +338,13 @@ function spawnEtoile() {
   scoreAuDernierSpawnEtoile = score;
 }
 
-function mettreAJourEtoiles() {
+function mettreAJourEtoiles(factor) {
   const etape = obtenirEtapeActuelle();
   const vitesse = parametresEtapes[etape - 1].vitesse + 0.5; // Légèrement plus rapide que les obstacles
+  const delta = (factor !== undefined ? factor : 1) * vitesse;
   for (let i = listeEtoiles.length - 1; i >= 0; i--) {
     const etoile = listeEtoiles[i];
-    etoile.decalageY += vitesse;
+    etoile.decalageY += delta;
     if (etoile.decalageY >= hauteurCellule) {
       etoile.decalageY -= hauteurCellule;
       etoile.rang += 1;
@@ -470,12 +474,17 @@ function dessinerFondEtape() {
   ctx.fillRect(0, 0, config.largeurZone, config.hauteurZone);
 }
 
-function boucleJeu() {
+function boucleJeu(now) {
   if (!enCours) return;
   if (enPause) {
+    lastFrameTime = now; // évite un gros deltaTime au retour de pause
     requestAnimationFrame(boucleJeu);
     return;
   }
+
+  const deltaTime = Math.min((now - lastFrameTime) / 1000, 3 / 60);
+  lastFrameTime = now;
+  const factor = deltaTime * 60;
 
   frameActuelle++;
   const etape = obtenirEtapeActuelle();
@@ -488,9 +497,12 @@ function boucleJeu() {
     etapePrecedente = etape;
   }
 
-  // Spawn obstacles selon l'intervalle de l'étape
-  if (frameActuelle % parametres.intervalle === 0) {
+  // Spawn obstacles basé sur le temps (intervalle = frames à 60 fps)
+  const intervalleSec = parametres.intervalle / 60;
+  tempsDepuisDernierSpawn += deltaTime;
+  while (tempsDepuisDernierSpawn >= intervalleSec) {
     spawnObstacle();
+    tempsDepuisDernierSpawn -= intervalleSec;
   }
 
   // Spawn étoiles : étape 1 = 2 étoiles max, étapes 2-5 = 1 étoile (quand la vitesse s'accélère)
@@ -505,8 +517,8 @@ function boucleJeu() {
     spawnEtoile();
   }
 
-  mettreAJourObstacles();
-  mettreAJourEtoiles();
+  mettreAJourObstacles(factor);
+  mettreAJourEtoiles(factor);
   collisionPersonnageEtoile();
 
   // Collision obstacle : normal -1 vie, parasite -2 vies
@@ -559,6 +571,8 @@ function demarrerPartie() {
   score = 0;
   vies = config.viesInitiales;
   frameActuelle = 0;
+  lastFrameTime = performance.now();
+  tempsDepuisDernierSpawn = 0;
   etapePrecedente = 1;
   listeObstacles = [];
   listeEtoiles = [];
