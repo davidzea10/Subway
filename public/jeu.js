@@ -1296,21 +1296,35 @@ document.getElementById('fermer-apropos').addEventListener('click', () => {
 
 // Vérifier si le jeu est en maintenance (arrêté par l'admin)
 async function verifierMaintenance() {
-  if (!supabaseClient) return { maintenance: false };
-  try {
-    const { data, error } = await supabaseClient
-      .from('parametres_jeu')
-      .select('maintenance, message_maintenance')
-      .eq('id', 1)
-      .single();
-    if (error) return { maintenance: false };
-    return {
-      maintenance: !!data?.maintenance,
-      message: data?.message_maintenance || 'Le jeu est temporairement indisponible. Merci de réessayer plus tard.',
-    };
-  } catch (e) {
-    return { maintenance: false };
+  // 1. Essai via Supabase
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('parametres_jeu')
+        .select('maintenance, message_maintenance')
+        .eq('id', 1)
+        .single();
+      if (!error && data) {
+        return {
+          maintenance: !!data.maintenance,
+          message: data.message_maintenance || 'Le jeu est temporairement indisponible. Merci de réessayer plus tard.',
+        };
+      }
+    } catch (e) {}
   }
+  // 2. Fallback : API publique (si Supabase échoue ou table absente)
+  try {
+    const origin = window.location.origin;
+    const res = await fetch(origin + '/api/status', { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      return {
+        maintenance: !!json.maintenance,
+        message: json.message || 'Le jeu est temporairement indisponible. Merci de réessayer plus tard.',
+      };
+    }
+  } catch (e) {}
+  return { maintenance: false, message: '' };
 }
 
 function afficherMaintenance(message) {
@@ -1318,6 +1332,7 @@ function afficherMaintenance(message) {
   if (texteMaintenance) texteMaintenance.textContent = message;
   ecranSplash.classList.add('cache');
   ecranAccueil.classList.add('cache');
+  ecranChoixPersonnage.classList.add('cache');
   ecranMaintenance.classList.remove('cache');
 }
 
@@ -1377,7 +1392,12 @@ document.querySelectorAll('.choix-perso').forEach((btn) => {
   });
 });
 
-boutonJouer.addEventListener('click', () => {
+boutonJouer.addEventListener('click', async () => {
+  const { maintenance, message } = await verifierMaintenance();
+  if (maintenance) {
+    afficherMaintenance(message);
+    return;
+  }
   ecranChoixPersonnage.classList.add('cache');
   demarrerPartie();
 });
