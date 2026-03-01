@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Mboka Runner</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a0a14 0%, #1a1a2e 100%);
+      min-height: 100vh;
+      color: #eee;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .admin-card {
+      background: #0d0d1a;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 24px; color: #00d4ff; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: #aaa; }
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 1rem;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #0a0a14; }
+    .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; margin-top: 8px; }
+    .btn-success { background: linear-gradient(135deg, #00b894, #009975); color: #fff; }
+    .msg { margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 0.9rem; }
+    .msg-ok { background: rgba(0, 184, 148, 0.2); color: #00b894; }
+    .msg-err { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+    .cache { display: none !important; }
+    .section { margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid #2a2a4a; }
+    .section:last-of-type { border-bottom: none; }
+    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+    .status-ok { background: rgba(0, 184, 148, 0.3); color: #00b894; }
+    .status-stop { background: rgba(231, 76, 60, 0.3); color: #e74c3c; }
+  </style>
+</head>
+<body>
+  <div class="admin-card">
+    <div id="ecran-login">
+      <h1>🔐 Connexion admin</h1>
+      <p style="margin-bottom: 20px; color: #888; font-size: 0.9rem;">Accès réservé au gestionnaire du jeu.</p>
+      <div class="form-group">
+        <label for="input-password">Mot de passe</label>
+        <input type="password" id="input-password" placeholder="Mot de passe admin" autocomplete="current-password">
+      </div>
+      <button type="button" id="bouton-login" class="btn-primary">Se connecter</button>
+      <p id="msg-login" class="msg cache"></p>
+    </div>
+
+    <div id="ecran-admin" class="cache">
+      <h1>⚙️ Administration Mboka Runner</h1>
+      <p id="admin-status" style="margin-bottom: 20px;"></p>
+
+      <div class="section">
+        <h2 style="font-size: 1rem; margin-bottom: 12px;">Contrôle du jeu</h2>
+        <p style="color: #888; font-size: 0.85rem; margin-bottom: 12px;">Quand le jeu est arrêté, les visiteurs voient un message et ne peuvent pas jouer.</p>
+        <div class="form-group">
+          <label for="input-message">Message affiché aux joueurs</label>
+          <textarea id="input-message" placeholder="Le jeu est temporairement indisponible. Merci de réessayer plus tard."></textarea>
+        </div>
+        <button type="button" id="bouton-arreter" class="btn-danger">⏹ Arrêter le jeu</button>
+        <button type="button" id="bouton-repartir" class="btn-success">▶ Reprendre le jeu</button>
+      </div>
+
+      <div class="section">
+        <h2 style="font-size: 1rem; margin-bottom: 12px;">Classement</h2>
+        <p style="color: #888; font-size: 0.85rem; margin-bottom: 12px;">Réinitialise le classement pour lancer une nouvelle partie/saison.</p>
+        <button type="button" id="bouton-reset" class="btn-danger">🗑 Réinitialiser le classement</button>
+      </div>
+
+      <button type="button" id="bouton-deconnexion" style="margin-top: 16px; background: #333; color: #aaa;">Se déconnecter</button>
+      <p id="msg-admin" class="msg cache"></p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const API = '/api/admin';
+      let adminPassword = '';
+
+      const ecranLogin = document.getElementById('ecran-login');
+      const ecranAdmin = document.getElementById('ecran-admin');
+      const inputPassword = document.getElementById('input-password');
+      const boutonLogin = document.getElementById('bouton-login');
+      const msgLogin = document.getElementById('msg-login');
+      const adminStatus = document.getElementById('admin-status');
+      const inputMessage = document.getElementById('input-message');
+      const boutonArreter = document.getElementById('bouton-arreter');
+      const boutonRepartir = document.getElementById('bouton-repartir');
+      const boutonReset = document.getElementById('bouton-reset');
+      const boutonDeconnexion = document.getElementById('bouton-deconnexion');
+      const msgAdmin = document.getElementById('msg-admin');
+
+      function showMsg(el, text, ok) {
+        el.textContent = text;
+        el.className = 'msg ' + (ok ? 'msg-ok' : 'msg-err');
+        el.classList.remove('cache');
+      }
+      function hideMsg(el) { el.classList.add('cache'); }
+
+      async function post(action, extra = {}) {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: adminPassword, action, ...extra }),
+        });
+        return res.json();
+      }
+
+      async function refreshStatus() {
+        const r = await post('get_status');
+        if (!r.ok) {
+          adminStatus.innerHTML = '<span class="status-badge status-stop">Impossible de charger l\'état</span>';
+          return;
+        }
+        adminStatus.innerHTML = r.maintenance
+          ? '<span class="status-badge status-stop">Jeu arrêté</span>'
+          : '<span class="status-badge status-ok">Jeu en ligne</span>';
+        inputMessage.value = r.message_maintenance || '';
+      }
+
+      boutonLogin.addEventListener('click', async () => {
+        const pwd = inputPassword.value.trim();
+        if (!pwd) {
+          showMsg(msgLogin, 'Entre le mot de passe.', false);
+          return;
+        }
+        boutonLogin.disabled = true;
+        hideMsg(msgLogin);
+        const r = await post('get_status', { password: pwd });
+        boutonLogin.disabled = false;
+        if (r.ok) {
+          adminPassword = pwd;
+          inputPassword.value = '';
+          ecranLogin.classList.add('cache');
+          ecranAdmin.classList.remove('cache');
+          refreshStatus();
+        } else {
+          showMsg(msgLogin, r.erreur || 'Mot de passe incorrect.', false);
+        }
+      });
+
+      boutonArreter.addEventListener('click', async () => {
+        boutonArreter.disabled = true;
+        hideMsg(msgAdmin);
+        const r = await post('set_maintenance', {
+          maintenance: true,
+          message_maintenance: inputMessage.value.trim() || 'Le jeu est temporairement indisponible. Merci de réessayer plus tard.',
+        });
+        boutonArreter.disabled = false;
+        if (r.ok) {
+          showMsg(msgAdmin, r.message, true);
+          refreshStatus();
+        } else {
+          showMsg(msgAdmin, r.erreur || 'Erreur', false);
+        }
+      });
+
+      boutonRepartir.addEventListener('click', async () => {
+        boutonRepartir.disabled = true;
+        hideMsg(msgAdmin);
+        const r = await post('set_maintenance', { maintenance: false });
+        boutonRepartir.disabled = false;
+        if (r.ok) {
+          showMsg(msgAdmin, r.message, true);
+          refreshStatus();
+        } else {
+          showMsg(msgAdmin, r.erreur || 'Erreur', false);
+        }
+      });
+
+      boutonReset.addEventListener('click', async () => {
+        if (!confirm('Réinitialiser tout le classement ? Cette action est irréversible.')) return;
+        boutonReset.disabled = true;
+        hideMsg(msgAdmin);
+        const r = await post('reset_classement');
+        boutonReset.disabled = false;
+        if (r.ok) {
+          showMsg(msgAdmin, r.message, true);
+        } else {
+          showMsg(msgAdmin, r.erreur || 'Erreur', false);
+        }
+      });
+
+      boutonDeconnexion.addEventListener('click', () => {
+        adminPassword = '';
+        ecranAdmin.classList.add('cache');
+        ecranLogin.classList.remove('cache');
+        hideMsg(msgAdmin);
+      });
+
+      inputPassword.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') boutonLogin.click();
+      });
+    })();
+  </script>
+</body>
+</html>

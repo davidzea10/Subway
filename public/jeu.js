@@ -7,6 +7,7 @@
 // ============== RÉFÉRENCES DOM ==============
 const zoneJeu = document.getElementById('zone-jeu');
 const ecranSplash = document.getElementById('ecran-splash');
+const ecranMaintenance = document.getElementById('ecran-maintenance');
 const ecranAccueil = document.getElementById('ecran-accueil');
 const ecranChoixPersonnage = document.getElementById('ecran-choix-personnage');
 const ecranGameOver = document.getElementById('ecran-game-over');
@@ -1293,8 +1294,50 @@ document.getElementById('fermer-apropos').addEventListener('click', () => {
   pageApropos.classList.add('cache');
 });
 
-document.getElementById('bouton-commencer').addEventListener('click', () => {
+// Vérifier si le jeu est en maintenance (arrêté par l'admin)
+async function verifierMaintenance() {
+  if (!supabaseClient) return { maintenance: false };
+  try {
+    const { data, error } = await supabaseClient
+      .from('parametres_jeu')
+      .select('maintenance, message_maintenance')
+      .eq('id', 1)
+      .single();
+    if (error) return { maintenance: false };
+    return {
+      maintenance: !!data?.maintenance,
+      message: data?.message_maintenance || 'Le jeu est temporairement indisponible. Merci de réessayer plus tard.',
+    };
+  } catch (e) {
+    return { maintenance: false };
+  }
+}
+
+function afficherMaintenance(message) {
+  const texteMaintenance = document.getElementById('texte-maintenance');
+  if (texteMaintenance) texteMaintenance.textContent = message;
   ecranSplash.classList.add('cache');
+  ecranAccueil.classList.add('cache');
+  ecranMaintenance.classList.remove('cache');
+}
+
+document.getElementById('bouton-commencer').addEventListener('click', async () => {
+  const { maintenance, message } = await verifierMaintenance();
+  ecranSplash.classList.add('cache');
+  if (maintenance) {
+    afficherMaintenance(message);
+    return;
+  }
+  ecranAccueil.classList.remove('cache');
+});
+
+document.getElementById('bouton-reessayer-maintenance').addEventListener('click', async () => {
+  const { maintenance, message } = await verifierMaintenance();
+  if (maintenance) {
+    afficherMaintenance(message);
+    return;
+  }
+  ecranMaintenance.classList.add('cache');
   ecranAccueil.classList.remove('cache');
 });
 
