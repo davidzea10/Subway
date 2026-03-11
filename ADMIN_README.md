@@ -24,9 +24,12 @@ Va dans ton projet Vercel → Settings → Environment Variables et ajoute :
 |----------|--------|-------------|
 | `ADMIN_PASSWORD` | *(ton mot de passe secret)* | Mot de passe pour accéder à l'admin |
 | `SUPABASE_URL` | `https://wvwfrejojfktrdfkxvpj.supabase.co` | URL de ton projet Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | *(clé service_role)* | Dans Supabase : Settings → API → `service_role` (secret) |
+| `SUPABASE_SERVICE_ROLE_KEY` | *(clé service_role)* | Dans Supabase : Settings → API → **service_role** (secret) |
 
-> ⚠️ **Ne jamais** exposer la clé `service_role` côté frontend. Elle contourne les règles RLS.
+> ⚠️ **Important :** Utilise la clé **service_role**, PAS la clé **anon**. La service_role est plus longue et commence souvent par `eyJ...`.  
+> ⚠️ Ne jamais exposer la clé `service_role` côté frontend. Elle contourne les règles RLS.
+
+**Si ça ne marche pas :** Ouvre la console du navigateur (F12) sur la page admin, clique sur « Arrêter le jeu », et regarde le message d’erreur affiché.
 
 ### 3. Accès à l'admin
 

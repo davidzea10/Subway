@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Remarques</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a0a14 0%, #1a1a2e 100%);
+      min-height: 100vh;
+      color: #eee;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .admin-card {
+      background: #0d0d1a;
+      border-radius: 16px;
+      padding: 28px;
+      max-width: 720px;
+      width: 100%;
+      box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    }
+    h1 { font-size: 1.4rem; margin-bottom: 10px; color: #00d4ff; }
+    .sub { color: #888; font-size: 0.9rem; margin-bottom: 18px; line-height: 1.35; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 1rem;
+    }
+    button {
+      padding: 12px 14px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #0a0a14; }
+    .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; }
+    .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: #ddd; }
+    .cache { display: none !important; }
+    .msg { margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 0.9rem; }
+    .msg-ok { background: rgba(0, 184, 148, 0.2); color: #00b894; }
+    .msg-err { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+
+    .liste-remarques { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+    .remarque-card { background: rgba(26,26,46,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; }
+    .remarque-meta { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 8px; color: #aaa; font-size: 0.85rem; }
+    .remarque-pseudo { color: #00d4ff; font-weight: 800; }
+    .remarque-texte { color: #eee; white-space: pre-wrap; line-height: 1.35; }
+    .remarque-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .spacer { flex: 1; }
+    a { color:#00d4ff; text-decoration:none; font-weight:800; }
+  </style>
+</head>
+<body>
+  <div class="admin-card">
+    <div class="row" style="margin-bottom: 10px;">
+      <a href="admin.html">← Retour admin</a>
+      <span class="spacer"></span>
+      <span style="color:#666; font-size:0.9rem;">Remarques</span>
+    </div>
+
+    <div id="ecran-login">
+      <h1>🔐 Connexion admin</h1>
+      <p class="sub">Accès réservé. (Même mot de passe que la page admin.)</p>
+      <div class="row">
+        <input type="password" id="input-password" placeholder="Mot de passe admin" autocomplete="current-password">
+      </div>
+      <div class="row">
+        <button type="button" id="bouton-login" class="btn-primary">Se connecter</button>
+      </div>
+      <p id="msg-login" class="msg cache"></p>
+    </div>
+
+    <div id="ecran-remarques" class="cache">
+      <h1>💬 Remarques des joueurs</h1>
+      <p class="sub">Liste paginée des messages de la table <code>remarques</code>. Tu peux supprimer une remarque si nécessaire.</p>
+
+      <div class="row">
+        <button type="button" id="bouton-charger" class="btn-outline">↻ Charger</button>
+        <button type="button" id="bouton-plus" class="btn-outline">Plus</button>
+        <span class="spacer"></span>
+        <button type="button" id="bouton-deconnexion" class="btn-outline">Se déconnecter</button>
+      </div>
+
+      <div id="liste-remarques" class="liste-remarques"></div>
+      <p id="msg-remarques" class="msg cache"></p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const API = '/api/admin';
+      let adminPassword = '';
+      let offset = 0;
+
+      const ecranLogin = document.getElementById('ecran-login');
+      const ecranRemarques = document.getElementById('ecran-remarques');
+      const inputPassword = document.getElementById('input-password');
+      const boutonLogin = document.getElementById('bouton-login');
+      const msgLogin = document.getElementById('msg-login');
+      const boutonCharger = document.getElementById('bouton-charger');
+      const boutonPlus = document.getElementById('bouton-plus');
+      const boutonDeconnexion = document.getElementById('bouton-deconnexion');
+      const listeRemarques = document.getElementById('liste-remarques');
+      const msgRemarques = document.getElementById('msg-remarques');
+
+      function showMsg(el, text, ok) {
+        el.textContent = text;
+        el.className = 'msg ' + (ok ? 'msg-ok' : 'msg-err');
+        el.classList.remove('cache');
+      }
+      function hideMsg(el) { el.classList.add('cache'); }
+
+      function escapeHtml(s) {
+        return String(s || '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('\"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+      function formatDateFR(iso) {
+        try { return new Date(iso).toLocaleString('fr-FR'); } catch (e) { return iso || ''; }
+      }
+
+      async function post(action, extra = {}) {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: adminPassword, action, ...extra }),
+        });
+        return res.json();
+      }
+
+      async function charger(reset) {
+        if (reset) offset = 0;
+        hideMsg(msgRemarques);
+        boutonCharger.disabled = true;
+        boutonPlus.disabled = true;
+        try {
+          const r = await post('get_remarques', { limit: 15, offset });
+          if (!r.ok) {
+            showMsg(msgRemarques, r.erreur || 'Impossible de charger.', false);
+            return;
+          }
+          const rows = Array.isArray(r.data) ? r.data : [];
+          if (reset) listeRemarques.innerHTML = '';
+          if (rows.length === 0 && offset === 0) {
+            listeRemarques.innerHTML = '<div style="color:#888; font-size:0.95rem;">Aucune remarque.</div>';
+            return;
+          }
+          rows.forEach((row) => {
+            const pseudo = (row.pseudo && String(row.pseudo).trim()) ? String(row.pseudo).trim() : 'Anonyme';
+            const card = document.createElement('div');
+            card.className = 'remarque-card';
+            card.innerHTML = `
+              <div class="remarque-meta">
+                <span class="remarque-pseudo">${escapeHtml(pseudo)}</span>
+                <span>${escapeHtml(formatDateFR(row.created_at))}</span>
+              </div>
+              <div class="remarque-texte">${escapeHtml(row.texte || '')}</div>
+              <div class="remarque-actions">
+                <button type="button" class="btn-danger" data-action="delete" data-id="${escapeHtml(row.id)}">Supprimer</button>
+              </div>
+            `;
+            listeRemarques.appendChild(card);
+          });
+          offset += rows.length;
+        } catch (e) {
+          console.error('Admin remarques:', e);
+          showMsg(msgRemarques, 'Erreur réseau: ' + (e.message || ''), false);
+        } finally {
+          boutonCharger.disabled = false;
+          boutonPlus.disabled = false;
+        }
+      }
+
+      boutonLogin.addEventListener('click', async () => {
+        const pwd = inputPassword.value.trim();
+        if (!pwd) {
+          showMsg(msgLogin, 'Entre le mot de passe.', false);
+          return;
+        }
+        boutonLogin.disabled = true;
+        hideMsg(msgLogin);
+        try {
+          adminPassword = pwd;
+          const r = await post('get_remarques', { limit: 1, offset: 0 });
+          if (!r.ok) {
+            adminPassword = '';
+            showMsg(msgLogin, r.erreur || 'Connexion impossible.', false);
+            return;
+          }
+          inputPassword.value = '';
+          ecranLogin.classList.add('cache');
+          ecranRemarques.classList.remove('cache');
+          await charger(true);
+        } finally {
+          boutonLogin.disabled = false;
+        }
+      });
+
+      boutonCharger.addEventListener('click', () => charger(true));
+      boutonPlus.addEventListener('click', () => charger(false));
+
+      listeRemarques.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-action="delete"][data-id]');
+        if (!btn) return;
+        const rid = btn.getAttribute('data-id');
+        if (!rid) return;
+        if (!confirm('Supprimer cette remarque ?')) return;
+        btn.disabled = true;
+        hideMsg(msgRemarques);
+        try {
+          const r = await post('delete_remarque', { id: rid });
+          if (!r.ok) {
+            showMsg(msgRemarques, r.erreur || 'Suppression impossible.', false);
+            btn.disabled = false;
+            return;
+          }
+          await charger(true);
+        } catch (err) {
+          console.error('Admin delete_remarque:', err);
+          showMsg(msgRemarques, 'Erreur réseau: ' + (err.message || ''), false);
+          btn.disabled = false;
+        }
+      });
+
+      boutonDeconnexion.addEventListener('click', () => {
+        adminPassword = '';
+        offset = 0;
+        listeRemarques.innerHTML = '';
+        hideMsg(msgRemarques);
+        ecranRemarques.classList.add('cache');
+        ecranLogin.classList.remove('cache');
+      });
+
+      inputPassword.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') boutonLogin.click();
+      });
+    })();
+  </script>
+</body>
+</html>
+

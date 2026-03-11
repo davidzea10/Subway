@@ -62,6 +62,14 @@
     .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
     .status-ok { background: rgba(0, 184, 148, 0.3); color: #00b894; }
     .status-stop { background: rgba(231, 76, 60, 0.3); color: #e74c3c; }
+    .liste-remarques { display: flex; flex-direction: column; gap: 10px; }
+    .remarque-card { background: rgba(26,26,46,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; }
+    .remarque-meta { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 8px; color: #aaa; font-size: 0.85rem; }
+    .remarque-pseudo { color: #00d4ff; font-weight: 700; }
+    .remarque-texte { color: #eee; white-space: pre-wrap; line-height: 1.35; }
+    .remarque-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .btn-mini { padding: 10px; border-radius: 10px; font-size: 0.9rem; width: 100%; }
+    .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: #ddd; }
   </style>
 </head>
 <body>
@@ -98,6 +106,20 @@
         <button type="button" id="bouton-reset" class="btn-danger">🗑 Réinitialiser le classement</button>
       </div>
 
+      <div class="section">
+        <h2 style="font-size: 1rem; margin-bottom: 12px;">Remarques</h2>
+        <p style="color: #888; font-size: 0.85rem; margin-bottom: 12px;">Messages envoyés par les joueurs (table <code>remarques</code>).</p>
+        <div class="remarque-actions" style="margin-top: 0; margin-bottom: 10px;">
+          <button type="button" id="bouton-charger-remarques" class="btn-outline btn-mini">↻ Charger</button>
+          <button type="button" id="bouton-plus-remarques" class="btn-outline btn-mini">Plus</button>
+        </div>
+        <div style="margin-bottom: 10px;">
+          <a href="admin-remarques.html" style="color:#00d4ff; text-decoration:none; font-weight:700;">Ouvrir en page dédiée →</a>
+        </div>
+        <div id="liste-remarques" class="liste-remarques"></div>
+        <p id="msg-remarques" class="msg cache"></p>
+      </div>
+
       <button type="button" id="bouton-deconnexion" style="margin-top: 16px; background: #333; color: #aaa;">Se déconnecter</button>
       <p id="msg-admin" class="msg cache"></p>
     </div>
@@ -120,6 +142,11 @@
       const boutonReset = document.getElementById('bouton-reset');
       const boutonDeconnexion = document.getElementById('bouton-deconnexion');
       const msgAdmin = document.getElementById('msg-admin');
+      const boutonChargerRemarques = document.getElementById('bouton-charger-remarques');
+      const boutonPlusRemarques = document.getElementById('bouton-plus-remarques');
+      const listeRemarques = document.getElementById('liste-remarques');
+      const msgRemarques = document.getElementById('msg-remarques');
+      let remarquesOffset = 0;
 
       function showMsg(el, text, ok) {
         el.textContent = text;
@@ -149,6 +176,63 @@
         inputMessage.value = r.message_maintenance || '';
       }
 
+      function formatDateFR(iso) {
+        try { return new Date(iso).toLocaleString('fr-FR'); } catch (e) { return iso || ''; }
+      }
+
+      function escapeHtml(s) {
+        return String(s || '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('\"', '&quot;')
+          .replaceAll(\"'\", '&#039;');
+      }
+
+      async function chargerRemarques(reset = false) {
+        if (reset) remarquesOffset = 0;
+        hideMsg(msgRemarques);
+        boutonChargerRemarques.disabled = true;
+        boutonPlusRemarques.disabled = true;
+        try {
+          const r = await post('get_remarques', { limit: 10, offset: remarquesOffset });
+          if (!r.ok) {
+            showMsg(msgRemarques, r.erreur || 'Impossible de charger les remarques.', false);
+            return;
+          }
+          const rows = Array.isArray(r.data) ? r.data : [];
+          if (reset) listeRemarques.innerHTML = '';
+          if (rows.length === 0 && remarquesOffset === 0) {
+            listeRemarques.innerHTML = '<div style=\"color:#888; font-size:0.9rem;\">Aucune remarque.</div>';
+            return;
+          }
+          rows.forEach((row) => {
+            const pseudo = (row.pseudo && String(row.pseudo).trim()) ? String(row.pseudo).trim() : 'Anonyme';
+            const id = row.id;
+            const card = document.createElement('div');
+            card.className = 'remarque-card';
+            card.innerHTML = `
+              <div class=\"remarque-meta\">
+                <span class=\"remarque-pseudo\">${escapeHtml(pseudo)}</span>
+                <span>${escapeHtml(formatDateFR(row.created_at))}</span>
+              </div>
+              <div class=\"remarque-texte\">${escapeHtml(row.texte || '')}</div>
+              <div class=\"remarque-actions\">
+                <button type=\"button\" class=\"btn-danger btn-mini\" data-action=\"delete\" data-id=\"${escapeHtml(id)}\">Supprimer</button>
+              </div>
+            `;
+            listeRemarques.appendChild(card);
+          });
+          remarquesOffset += rows.length;
+        } catch (e) {
+          console.error('Admin remarques:', e);
+          showMsg(msgRemarques, 'Erreur réseau: ' + (e.message || ''), false);
+        } finally {
+          boutonChargerRemarques.disabled = false;
+          boutonPlusRemarques.disabled = false;
+        }
+      }
+
       boutonLogin.addEventListener('click', async () => {
         const pwd = inputPassword.value.trim();
         if (!pwd) {
@@ -165,6 +249,7 @@
           ecranLogin.classList.add('cache');
           ecranAdmin.classList.remove('cache');
           refreshStatus();
+          chargerRemarques(true);
         } else {
           showMsg(msgLogin, r.erreur || 'Mot de passe incorrect.', false);
         }
@@ -173,29 +258,46 @@
       boutonArreter.addEventListener('click', async () => {
         boutonArreter.disabled = true;
         hideMsg(msgAdmin);
-        const r = await post('set_maintenance', {
-          maintenance: true,
-          message_maintenance: inputMessage.value.trim() || 'Le jeu est temporairement indisponible. Merci de réessayer plus tard.',
-        });
-        boutonArreter.disabled = false;
-        if (r.ok) {
-          showMsg(msgAdmin, r.message, true);
-          refreshStatus();
-        } else {
-          showMsg(msgAdmin, r.erreur || 'Erreur', false);
+        try {
+          const r = await post('set_maintenance', {
+            maintenance: true,
+            message_maintenance: inputMessage.value.trim() || 'Le jeu est temporairement indisponible. Merci de réessayer plus tard.',
+          });
+          if (r.ok) {
+            showMsg(msgAdmin, r.message, true);
+            refreshStatus();
+          } else {
+            const err = r.erreur || 'Erreur inconnue';
+            console.error('Admin set_maintenance:', err);
+            showMsg(msgAdmin, err, false);
+            msgAdmin.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        } catch (e) {
+          console.error('Admin erreur:', e);
+          showMsg(msgAdmin, 'Erreur réseau: ' + (e.message || 'impossible de contacter l\'API'), false);
+          msgAdmin.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } finally {
+          boutonArreter.disabled = false;
         }
       });
 
       boutonRepartir.addEventListener('click', async () => {
         boutonRepartir.disabled = true;
         hideMsg(msgAdmin);
-        const r = await post('set_maintenance', { maintenance: false });
-        boutonRepartir.disabled = false;
-        if (r.ok) {
-          showMsg(msgAdmin, r.message, true);
-          refreshStatus();
-        } else {
-          showMsg(msgAdmin, r.erreur || 'Erreur', false);
+        try {
+          const r = await post('set_maintenance', { maintenance: false });
+          if (r.ok) {
+            showMsg(msgAdmin, r.message, true);
+            refreshStatus();
+          } else {
+            console.error('Admin set_maintenance:', r.erreur);
+            showMsg(msgAdmin, r.erreur || 'Erreur', false);
+          }
+        } catch (e) {
+          console.error('Admin erreur:', e);
+          showMsg(msgAdmin, 'Erreur réseau: ' + (e.message || ''), false);
+        } finally {
+          boutonRepartir.disabled = false;
         }
       });
 
@@ -203,12 +305,47 @@
         if (!confirm('Réinitialiser tout le classement ? Cette action est irréversible.')) return;
         boutonReset.disabled = true;
         hideMsg(msgAdmin);
-        const r = await post('reset_classement');
-        boutonReset.disabled = false;
-        if (r.ok) {
-          showMsg(msgAdmin, r.message, true);
-        } else {
-          showMsg(msgAdmin, r.erreur || 'Erreur', false);
+        try {
+          const r = await post('reset_classement');
+          if (r.ok) {
+            showMsg(msgAdmin, r.message, true);
+          } else {
+            console.error('Admin reset_classement:', r.erreur);
+            showMsg(msgAdmin, r.erreur || 'Erreur', false);
+            msgAdmin.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        } catch (e) {
+          console.error('Admin erreur:', e);
+          showMsg(msgAdmin, 'Erreur réseau: ' + (e.message || ''), false);
+        } finally {
+          boutonReset.disabled = false;
+        }
+      });
+
+      boutonChargerRemarques.addEventListener('click', () => chargerRemarques(true));
+      boutonPlusRemarques.addEventListener('click', () => chargerRemarques(false));
+
+      listeRemarques.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-action=\"delete\"][data-id]');
+        if (!btn) return;
+        const rid = btn.getAttribute('data-id');
+        if (!rid) return;
+        if (!confirm('Supprimer cette remarque ?')) return;
+        btn.disabled = true;
+        hideMsg(msgRemarques);
+        try {
+          const r = await post('delete_remarque', { id: rid });
+          if (!r.ok) {
+            showMsg(msgRemarques, r.erreur || 'Suppression impossible.', false);
+            btn.disabled = false;
+            return;
+          }
+          // Recharger depuis le début pour garder un état cohérent
+          await chargerRemarques(true);
+        } catch (err) {
+          console.error('Admin delete_remarque:', err);
+          showMsg(msgRemarques, 'Erreur réseau: ' + (err.message || ''), false);
+          btn.disabled = false;
         }
       });
 
@@ -217,6 +354,9 @@
         ecranAdmin.classList.add('cache');
         ecranLogin.classList.remove('cache');
         hideMsg(msgAdmin);
+        hideMsg(msgRemarques);
+        listeRemarques.innerHTML = '';
+        remarquesOffset = 0;
       });
 
       inputPassword.addEventListener('keydown', (e) => {
