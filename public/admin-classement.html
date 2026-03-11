@@ -133,6 +133,7 @@
   <script>
     (function () {
       const API = '/api/admin';
+      const STORAGE_KEY = 'mbokaAdminPwd';
       let adminPassword = '';
       let intervalId = null;
 
@@ -212,6 +213,29 @@
         }
       }
 
+      async function essayerAutoConnexion() {
+        const stored = sessionStorage.getItem(STORAGE_KEY);
+        if (!stored) return;
+        adminPassword = stored;
+        try {
+          const r = await post('get_status');
+          if (!r.ok) {
+            adminPassword = '';
+            sessionStorage.removeItem(STORAGE_KEY);
+            return;
+          }
+          ecranLogin.classList.add('cache');
+          ecranAdmin.classList.remove('cache');
+          await chargerClassement();
+          intervalId = setInterval(() => {
+            chargerClassement();
+          }, 8000);
+        } catch (e) {
+          adminPassword = '';
+          sessionStorage.removeItem(STORAGE_KEY);
+        }
+      }
+
       boutonLogin.addEventListener('click', async () => {
         const pwd = inputPassword.value.trim();
         if (!pwd) {
@@ -228,6 +252,7 @@
             showMsg(msgLogin, r.erreur || 'Mot de passe incorrect.', false);
             return;
           }
+          sessionStorage.setItem(STORAGE_KEY, adminPassword);
           inputPassword.value = '';
           ecranLogin.classList.add('cache');
           ecranAdmin.classList.remove('cache');
@@ -248,6 +273,7 @@
 
       boutonDeconnexion.addEventListener('click', () => {
         adminPassword = '';
+        sessionStorage.removeItem(STORAGE_KEY);
         if (intervalId) clearInterval(intervalId);
         intervalId = null;
         ecranAdmin.classList.add('cache');
@@ -260,6 +286,8 @@
       inputPassword.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') boutonLogin.click();
       });
+
+      essayerAutoConnexion();
     })();
   </script>
 </body>
