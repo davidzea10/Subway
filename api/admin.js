@@ -99,6 +99,41 @@ export default async function handler(req, res) {
       });
     }
 
+    if (action === 'get_classement') {
+      const lim = Math.max(1, Math.min(200, Number.isFinite(+limit) ? +limit : 50));
+      const resSupa = await fetch(
+        `${supabaseUrl}/rest/v1/scores?select=pseudo,score,victoire,created_at&order=score.desc,created_at.asc&limit=${lim}`,
+        {
+          method: 'GET',
+          headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+        }
+      );
+      const body = await resSupa.text();
+      if (!resSupa.ok) {
+        throw new Error(body || `Supabase erreur ${resSupa.status}`);
+      }
+      const data = JSON.parse(body || '[]');
+      return res.status(200).json({ ok: true, data });
+    }
+
+    if (action === 'get_commentaires') {
+      const lim = Math.max(1, Math.min(100, Number.isFinite(+limit) ? +limit : 20));
+      const off = Math.max(0, Number.isFinite(+offset) ? +offset : 0);
+      const resSupa = await fetch(
+        `${supabaseUrl}/rest/v1/commentaires?select=id,pseudo,texte,created_at&order=created_at.desc&limit=${lim}&offset=${off}`,
+        {
+          method: 'GET',
+          headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+        }
+      );
+      const body = await resSupa.text();
+      if (!resSupa.ok) {
+        throw new Error(body || `Supabase erreur ${resSupa.status}`);
+      }
+      const data = JSON.parse(body || '[]');
+      return res.status(200).json({ ok: true, data });
+    }
+
     if (action === 'get_remarques') {
       const lim = Math.max(1, Math.min(100, Number.isFinite(+limit) ? +limit : 20));
       const off = Math.max(0, Number.isFinite(+offset) ? +offset : 0);
@@ -118,6 +153,19 @@ export default async function handler(req, res) {
     if (action === 'delete_remarque') {
       if (!id) return res.status(400).json({ ok: false, erreur: 'id manquant' });
       const resSupa = await fetch(`${supabaseUrl}/rest/v1/remarques?id=eq.${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { ...baseHeaders, Prefer: 'return=minimal' },
+      });
+      const body = await resSupa.text();
+      if (!resSupa.ok) {
+        throw new Error(body || `Supabase erreur ${resSupa.status}`);
+      }
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === 'delete_commentaire') {
+      if (!id) return res.status(400).json({ ok: false, erreur: 'id manquant' });
+      const resSupa = await fetch(`${supabaseUrl}/rest/v1/commentaires?id=eq.${encodeURIComponent(id)}`, {
         method: 'DELETE',
         headers: { ...baseHeaders, Prefer: 'return=minimal' },
       });
