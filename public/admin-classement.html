@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Classement</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a0a14 0%, #1a1a2e 100%);
+      min-height: 100vh;
+      color: #eee;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .shell { width: 100%; max-width: 720px; }
+    .card {
+      background: #0d0d1a;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    }
+    .nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+    }
+    .nav a {
+      padding: 8px 12px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      background: rgba(26,26,46,0.9);
+      color: #ccc;
+      white-space: nowrap;
+    }
+    .nav a.actif {
+      background: linear-gradient(135deg, #00d4ff, #0099cc);
+      color: #0a0a14;
+      font-weight: 700;
+    }
+    h1 { font-size: 1.4rem; color: #00d4ff; margin-bottom: 4px; }
+    .sub { color: #888; font-size: 0.9rem; margin-bottom: 12px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .spacer { flex: 1; }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover:not(:disabled) { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.18); color: #ddd; }
+    .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; }
+    .msg { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 0.85rem; }
+    .msg-ok { background: rgba(0,184,148,0.2); color: #00b894; }
+    .msg-err { background: rgba(231,76,60,0.2); color: #e74c3c; }
+    .cache { display: none !important; }
+    .liste { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .card-score {
+      background: rgba(26,26,46,0.7);
+      border-radius: 10px;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+    .card-main { display: flex; flex-direction: column; gap: 4px; }
+    .meta { font-size: 0.8rem; color: #aaa; }
+    .badge-victoire { color: #00b894; font-weight: 700; margin-left: 4px; }
+    input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="card" id="ecran-login">
+      <div class="nav">
+        <a href="admin-principal.html">⚙ Admin principal</a>
+        <a href="admin-classement.html" class="actif">🏆 Classement</a>
+        <a href="admin-commentaires.html">💬 Commentaires</a>
+        <a href="admin-remarques.html">✉ Remarques</a>
+      </div>
+      <h1>Connexion admin</h1>
+      <p class="sub">Entre le mot de passe admin pour voir le classement complet.</p>
+      <div class="row">
+        <input type="password" id="input-password" placeholder="Mot de passe admin" autocomplete="current-password">
+      </div>
+      <div class="row">
+        <button type="button" id="bouton-login" class="btn-outline">Se connecter</button>
+      </div>
+      <p id="msg-login" class="msg cache"></p>
+    </div>
+
+    <div class="card cache" id="ecran-admin">
+      <div class="nav">
+        <a href="admin-principal.html">⚙ Admin principal</a>
+        <a href="admin-classement.html" class="actif">🏆 Classement</a>
+        <a href="admin-commentaires.html">💬 Commentaires</a>
+        <a href="admin-remarques.html">✉ Remarques</a>
+      </div>
+      <h1>Classement en temps (quasi) réel</h1>
+      <p class="sub">Vue globale des meilleurs scores. La liste se met à jour régulièrement.</p>
+      <div class="row">
+        <button type="button" id="bouton-refresh" class="btn-outline">↻ Rafraîchir</button>
+        <span class="spacer"></span>
+        <button type="button" id="bouton-deconnexion" class="btn-outline">Se déconnecter</button>
+      </div>
+      <div id="liste-classement" class="liste"></div>
+      <p id="msg-classement" class="msg cache"></p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const API = '/api/admin';
+      let adminPassword = '';
+      let intervalId = null;
+
+      const ecranLogin = document.getElementById('ecran-login');
+      const ecranAdmin = document.getElementById('ecran-admin');
+      const inputPassword = document.getElementById('input-password');
+      const boutonLogin = document.getElementById('bouton-login');
+      const msgLogin = document.getElementById('msg-login');
+
+      const boutonRefresh = document.getElementById('bouton-refresh');
+      const boutonDeconnexion = document.getElementById('bouton-deconnexion');
+      const listeClassement = document.getElementById('liste-classement');
+      const msgClassement = document.getElementById('msg-classement');
+
+      function showMsg(el, text, ok) {
+        el.textContent = text;
+        el.className = 'msg ' + (ok ? 'msg-ok' : 'msg-err');
+        el.classList.remove('cache');
+      }
+      function hideMsg(el) { el.classList.add('cache'); }
+
+      function escapeHtml(s) {
+        return String(s || '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+      function formatDateFR(iso) {
+        try { return new Date(iso).toLocaleString('fr-FR'); } catch (e) { return iso || ''; }
+      }
+
+      async function post(action, extra) {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: adminPassword, action, ...(extra || {}) }),
+        });
+        return res.json();
+      }
+
+      async function chargerClassement() {
+        hideMsg(msgClassement);
+        boutonRefresh.disabled = true;
+        try {
+          const r = await post('get_classement', { limit: 100 });
+          if (!r.ok) {
+            listeClassement.innerHTML = '<div style="color:#888; font-size:0.9rem;">Impossible de charger le classement.</div>';
+            return;
+          }
+          const rows = Array.isArray(r.data) ? r.data : [];
+          if (!rows.length) {
+            listeClassement.innerHTML = '<div style="color:#888; font-size:0.9rem;">Aucun score pour le moment.</div>';
+            return;
+          }
+          let rang = 0;
+          listeClassement.innerHTML = rows.map((row) => {
+            rang += 1;
+            const pseudo = (row.pseudo && String(row.pseudo).trim()) ? String(row.pseudo).trim() : 'Anonyme';
+            const victoire = row.victoire ? '<span class="badge-victoire">✓ Victoire</span>' : '';
+            return `
+              <div class="card-score">
+                <div class="card-main">
+                  <div><strong>#${rang}</strong> — ${escapeHtml(pseudo)}</div>
+                  <div class="meta">Score : <strong>${row.score}</strong> ${victoire}</div>
+                </div>
+                <div class="meta">${escapeHtml(formatDateFR(row.created_at))}</div>
+              </div>
+            `;
+          }).join('');
+        } catch (e) {
+          console.error('Admin classement:', e);
+          listeClassement.innerHTML = '<div style="color:#888; font-size:0.9rem;">Erreur réseau.</div>';
+        } finally {
+          boutonRefresh.disabled = false;
+        }
+      }
+
+      boutonLogin.addEventListener('click', async () => {
+        const pwd = inputPassword.value.trim();
+        if (!pwd) {
+          showMsg(msgLogin, 'Entre le mot de passe.', false);
+          return;
+        }
+        boutonLogin.disabled = true;
+        hideMsg(msgLogin);
+        try {
+          adminPassword = pwd;
+          const r = await post('get_status');
+          if (!r.ok) {
+            adminPassword = '';
+            showMsg(msgLogin, r.erreur || 'Mot de passe incorrect.', false);
+            return;
+          }
+          inputPassword.value = '';
+          ecranLogin.classList.add('cache');
+          ecranAdmin.classList.remove('cache');
+          await chargerClassement();
+          // "Temps réel" simple : rafraîchit toutes les 8 secondes
+          intervalId = setInterval(() => {
+            chargerClassement();
+          }, 8000);
+        } catch (e) {
+          adminPassword = '';
+          showMsg(msgLogin, 'Erreur réseau: ' + (e.message || ''), false);
+        } finally {
+          boutonLogin.disabled = false;
+        }
+      });
+
+      boutonRefresh.addEventListener('click', () => chargerClassement());
+
+      boutonDeconnexion.addEventListener('click', () => {
+        adminPassword = '';
+        if (intervalId) clearInterval(intervalId);
+        intervalId = null;
+        ecranAdmin.classList.add('cache');
+        ecranLogin.classList.remove('cache');
+        hideMsg(msgLogin);
+        hideMsg(msgClassement);
+        listeClassement.innerHTML = '';
+      });
+
+      inputPassword.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') boutonLogin.click();
+      });
+    })();
+  </script>
+</body>
+</html>
+

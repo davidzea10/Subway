@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Principal</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a0a14 0%, #1a1a2e 100%);
+      min-height: 100vh;
+      color: #eee;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .shell { width: 100%; max-width: 720px; }
+    .card {
+      background: #0d0d1a;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    }
+    .nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+    }
+    .nav a {
+      padding: 8px 12px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      background: rgba(26,26,46,0.9);
+      color: #ccc;
+      white-space: nowrap;
+    }
+    .nav a.actif {
+      background: linear-gradient(135deg, #00d4ff, #0099cc);
+      color: #0a0a14;
+      font-weight: 700;
+    }
+    h1 { font-size: 1.4rem; color: #00d4ff; margin-bottom: 4px; }
+    .sub { color: #888; font-size: 0.9rem; margin-bottom: 16px; }
+    label { display: block; font-size: 0.9rem; color: #aaa; margin-bottom: 6px; }
+    textarea {
+      width: 100%;
+      min-height: 70px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 0.9rem;
+      resize: vertical;
+    }
+    input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 0.9rem;
+    }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .row-end { justify-content: flex-end; }
+    .spacer { flex: 1; }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover:not(:disabled) { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #0a0a14; }
+    .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; }
+    .msg { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 0.85rem; }
+    .msg-ok { background: rgba(0,184,148,0.2); color: #00b894; }
+    .msg-err { background: rgba(231,76,60,0.2); color: #e74c3c; }
+    .cache { display: none !important; }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .status-ok { background: rgba(0,184,148,0.3); color: #00b894; }
+    .status-stop { background: rgba(231,76,60,0.3); color: #e74c3c; }
+    @media (max-width: 600px) {
+      .card { padding: 18px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="card" id="ecran-login">
+      <div class="nav">
+        <a href="admin-principal.html" class="actif">⚙ Admin principal</a>
+        <a href="admin-classement.html">🏆 Classement</a>
+        <a href="admin-commentaires.html">💬 Commentaires</a>
+        <a href="admin-remarques.html">✉ Remarques</a>
+      </div>
+      <h1>Connexion admin</h1>
+      <p class="sub">Entre le mot de passe admin pour accéder au panneau principal.</p>
+      <div class="row">
+        <input type="password" id="input-password" placeholder="Mot de passe admin" autocomplete="current-password">
+      </div>
+      <div class="row row-end">
+        <button type="button" id="bouton-login" class="btn-primary">Se connecter</button>
+      </div>
+      <p id="msg-login" class="msg cache"></p>
+    </div>
+
+    <div class="card cache" id="ecran-admin">
+      <div class="nav">
+        <a href="admin-principal.html" class="actif">⚙ Admin principal</a>
+        <a href="admin-classement.html">🏆 Classement</a>
+        <a href="admin-commentaires.html">💬 Commentaires</a>
+        <a href="admin-remarques.html">✉ Remarques</a>
+      </div>
+      <h1>Admin principal</h1>
+      <p class="sub" id="admin-status"></p>
+
+      <div class="row" style="margin-bottom: 14px;">
+        <span class="spacer"></span>
+        <button type="button" id="bouton-deconnexion" class="btn-outline">Se déconnecter</button>
+      </div>
+
+      <label for="input-message">Message affiché aux joueurs quand le jeu est arrêté</label>
+      <textarea id="input-message" placeholder="Le jeu est temporairement indisponible. Merci de réessayer plus tard."></textarea>
+
+      <div class="row" style="margin-top: 12px;">
+        <button type="button" id="bouton-arreter" class="btn-danger">⏹ Arrêter le jeu</button>
+        <button type="button" id="bouton-repartir" class="btn-primary">▶ Reprendre le jeu</button>
+      </div>
+      <p id="msg-jeu" class="msg cache"></p>
+
+      <hr style="border: none; border-top: 1px solid #222; margin: 18px 0 12px;">
+
+      <h2 style="font-size: 1rem; margin-bottom: 6px;">Classement global</h2>
+      <p class="sub">Réinitialise toute la table des scores pour lancer une nouvelle “saison”.</p>
+      <div class="row">
+        <button type="button" id="bouton-reset" class="btn-danger">🗑 Réinitialiser le classement</button>
+      </div>
+      <p id="msg-reset" class="msg cache"></p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const API = '/api/admin';
+      let adminPassword = '';
+
+      const ecranLogin = document.getElementById('ecran-login');
+      const ecranAdmin = document.getElementById('ecran-admin');
+      const inputPassword = document.getElementById('input-password');
+      const boutonLogin = document.getElementById('bouton-login');
+      const msgLogin = document.getElementById('msg-login');
+
+      const adminStatus = document.getElementById('admin-status');
+      const boutonDeconnexion = document.getElementById('bouton-deconnexion');
+      const inputMessage = document.getElementById('input-message');
+      const boutonArreter = document.getElementById('bouton-arreter');
+      const boutonRepartir = document.getElementById('bouton-repartir');
+      const boutonReset = document.getElementById('bouton-reset');
+      const msgJeu = document.getElementById('msg-jeu');
+      const msgReset = document.getElementById('msg-reset');
+
+      function showMsg(el, text, ok) {
+        el.textContent = text;
+        el.className = 'msg ' + (ok ? 'msg-ok' : 'msg-err');
+        el.classList.remove('cache');
+      }
+      function hideMsg(el) { el.classList.add('cache'); }
+
+      async function post(action, extra) {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: adminPassword, action, ...(extra || {}) }),
+        });
+        return res.json();
+      }
+
+      async function refreshStatus() {
+        const r = await post('get_status');
+        if (!r.ok) {
+          adminStatus.innerHTML = '<span class="status-badge status-stop">Impossible de charger l\'état</span>';
+          return;
+        }
+        const badge = r.maintenance
+          ? '<span class="status-badge status-stop">Jeu arrêté</span>'
+          : '<span class="status-badge status-ok">Jeu en ligne</span>';
+        adminStatus.innerHTML = badge;
+        inputMessage.value = r.message_maintenance || '';
+      }
+
+      boutonLogin.addEventListener('click', async () => {
+        const pwd = inputPassword.value.trim();
+        if (!pwd) {
+          showMsg(msgLogin, 'Entre le mot de passe.', false);
+          return;
+        }
+        boutonLogin.disabled = true;
+        hideMsg(msgLogin);
+        try {
+          adminPassword = pwd;
+          const r = await post('get_status');
+          if (!r.ok) {
+            adminPassword = '';
+            showMsg(msgLogin, r.erreur || 'Mot de passe incorrect.', false);
+            return;
+          }
+          inputPassword.value = '';
+          ecranLogin.classList.add('cache');
+          ecranAdmin.classList.remove('cache');
+          refreshStatus();
+        } catch (e) {
+          adminPassword = '';
+          showMsg(msgLogin, 'Erreur réseau: ' + (e.message || ''), false);
+        } finally {
+          boutonLogin.disabled = false;
+        }
+      });
+
+      boutonArreter.addEventListener('click', async () => {
+        boutonArreter.disabled = true;
+        hideMsg(msgJeu);
+        try {
+          const r = await post('set_maintenance', {
+            maintenance: true,
+            message_maintenance: inputMessage.value.trim() || 'Le jeu est temporairement indisponible.',
+          });
+          if (r.ok) {
+            showMsg(msgJeu, r.message, true);
+            refreshStatus();
+          } else {
+            showMsg(msgJeu, r.erreur || 'Erreur.', false);
+          }
+        } catch (e) {
+          showMsg(msgJeu, 'Erreur réseau: ' + (e.message || ''), false);
+        } finally {
+          boutonArreter.disabled = false;
+        }
+      });
+
+      boutonRepartir.addEventListener('click', async () => {
+        boutonRepartir.disabled = true;
+        hideMsg(msgJeu);
+        try {
+          const r = await post('set_maintenance', { maintenance: false });
+          if (r.ok) {
+            showMsg(msgJeu, r.message, true);
+            refreshStatus();
+          } else {
+            showMsg(msgJeu, r.erreur || 'Erreur.', false);
+          }
+        } catch (e) {
+          showMsg(msgJeu, 'Erreur réseau: ' + (e.message || ''), false);
+        } finally {
+          boutonRepartir.disabled = false;
+        }
+      });
+
+      boutonReset.addEventListener('click', async () => {
+        if (!confirm('Réinitialiser tout le classement ? Cette action est irréversible.')) return;
+        boutonReset.disabled = true;
+        hideMsg(msgReset);
+        try {
+          const r = await post('reset_classement');
+          if (r.ok) {
+            showMsg(msgReset, r.message, true);
+          } else {
+            showMsg(msgReset, r.erreur || 'Erreur.', false);
+          }
+        } catch (e) {
+          showMsg(msgReset, 'Erreur réseau: ' + (e.message || ''), false);
+        } finally {
+          boutonReset.disabled = false;
+        }
+      });
+
+      boutonDeconnexion.addEventListener('click', () => {
+        adminPassword = '';
+        ecranAdmin.classList.add('cache');
+        ecranLogin.classList.remove('cache');
+        hideMsg(msgJeu);
+        hideMsg(msgReset);
+        hideMsg(msgLogin);
+      });
+
+      inputPassword.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') boutonLogin.click();
+      });
+    })();
+  </script>
+</body>
+</html>
+

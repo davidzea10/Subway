@@ -64,15 +64,18 @@
     .remarque-texte { color: #eee; white-space: pre-wrap; line-height: 1.35; }
     .remarque-actions { display: flex; gap: 8px; margin-top: 10px; }
     .spacer { flex: 1; }
-    a { color:#00d4ff; text-decoration:none; font-weight:800; }
+    .nav { display: flex; gap: 10px; margin-bottom: 16px; overflow-x: auto; }
+    .nav a { padding: 8px 12px; border-radius: 999px; text-decoration: none; font-size: 0.85rem; background: rgba(26,26,46,0.9); color:#ccc; white-space: nowrap; }
+    .nav a.actif { background: linear-gradient(135deg, #00d4ff, #0099cc); color:#0a0a14; font-weight:800; }
   </style>
 </head>
 <body>
   <div class="admin-card">
-    <div class="row" style="margin-bottom: 10px;">
-      <a href="admin.html">← Retour admin</a>
-      <span class="spacer"></span>
-      <span style="color:#666; font-size:0.9rem;">Remarques</span>
+    <div class="nav">
+      <a href="admin-principal.html">⚙ Admin principal</a>
+      <a href="admin-classement.html">🏆 Classement</a>
+      <a href="admin-commentaires.html">💬 Commentaires</a>
+      <a href="admin-remarques.html" class="actif">✉ Remarques</a>
     </div>
 
     <div id="ecran-login">

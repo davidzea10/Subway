@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Commentaires</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a0a14 0%, #1a1a2e 100%);
+      min-height: 100vh;
+      color: #eee;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .shell { width: 100%; max-width: 720px; }
+    .card {
+      background: #0d0d1a;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    }
+    .nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+    }
+    .nav a {
+      padding: 8px 12px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      background: rgba(26,26,46,0.9);
+      color: #ccc;
+      white-space: nowrap;
+    }
+    .nav a.actif {
+      background: linear-gradient(135deg, #00d4ff, #0099cc);
+      color: #0a0a14;
+      font-weight: 700;
+    }
+    h1 { font-size: 1.4rem; color: #00d4ff; margin-bottom: 4px; }
+    .sub { color: #888; font-size: 0.9rem; margin-bottom: 12px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .spacer { flex: 1; }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover:not(:disabled) { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.18); color: #ddd; }
+    .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; }
+    .msg { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 0.85rem; }
+    .msg-ok { background: rgba(0,184,148,0.2); color: #00b894; }
+    .msg-err { background: rgba(231,76,60,0.2); color: #e74c3c; }
+    .cache { display: none !important; }
+    .liste { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .card-comment {
+      background: rgba(26,26,46,0.7);
+      border-radius: 12px;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.9rem;
+    }
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: baseline;
+      font-size: 0.8rem;
+      color: #aaa;
+      margin-bottom: 4px;
+    }
+    .pseudo { color: #00d4ff; font-weight: 700; }
+    .texte { color: #eee; white-space: pre-wrap; line-height: 1.35; margin-top: 2px; }
+    .actions { display: flex; gap: 6px; margin-top: 6px; }
+    input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="card" id="ecran-login">
+      <div class="nav">
+        <a href="admin-principal.html">⚙ Admin principal</a>
+        <a href="admin-classement.html">🏆 Classement</a>
+        <a href="admin-commentaires.html" class="actif">💬 Commentaires</a>
+        <a href="admin-remarques.html">✉ Remarques</a>
+      </div>
+      <h1>Connexion admin</h1>
+      <p class="sub">Entre le mot de passe admin pour voir et modérer les commentaires.</p>
+      <div class="row">
+        <input type="password" id="input-password" placeholder="Mot de passe admin" autocomplete="current-password">
+      </div>
+      <div class="row">
+        <button type="button" id="bouton-login" class="btn-outline">Se connecter</button>
+      </div>
+      <p id="msg-login" class="msg cache"></p>
+    </div>
+
+    <div class="card cache" id="ecran-admin">
+      <div class="nav">
+        <a href="admin-principal.html">⚙ Admin principal</a>
+        <a href="admin-classement.html">🏆 Classement</a>
+        <a href="admin-commentaires.html" class="actif">💬 Commentaires</a>
+        <a href="admin-remarques.html">✉ Remarques</a>
+      </div>
+      <h1>Commentaires</h1>
+      <p class="sub">Messages envoyés en direct pendant le jeu. Tu peux les effacer ici.</p>
+      <div class="row">
+        <button type="button" id="bouton-refresh" class="btn-outline">↻ Rafraîchir</button>
+        <button type="button" id="bouton-plus" class="btn-outline">Plus</button>
+        <span class="spacer"></span>
+        <button type="button" id="bouton-deconnexion" class="btn-outline">Se déconnecter</button>
+      </div>
+      <div id="liste-commentaires" class="liste"></div>
+      <p id="msg-commentaires" class="msg cache"></p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const API = '/api/admin';
+      let adminPassword = '';
+      let offset = 0;
+
+      const ecranLogin = document.getElementById('ecran-login');
+      const ecranAdmin = document.getElementById('ecran-admin');
+      const inputPassword = document.getElementById('input-password');
+      const boutonLogin = document.getElementById('bouton-login');
+      const msgLogin = document.getElementById('msg-login');
+
+      const boutonRefresh = document.getElementById('bouton-refresh');
+      const boutonPlus = document.getElementById('bouton-plus');
+      const boutonDeconnexion = document.getElementById('bouton-deconnexion');
+      const listeCommentaires = document.getElementById('liste-commentaires');
+      const msgCommentaires = document.getElementById('msg-commentaires');
+
+      function showMsg(el, text, ok) {
+        el.textContent = text;
+        el.className = 'msg ' + (ok ? 'msg-ok' : 'msg-err');
+        el.classList.remove('cache');
+      }
+      function hideMsg(el) { el.classList.add('cache'); }
+
+      function escapeHtml(s) {
+        return String(s || '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+      function formatDateFR(iso) {
+        try { return new Date(iso).toLocaleString('fr-FR'); } catch (e) { return iso || ''; }
+      }
+
+      async function post(action, extra) {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: adminPassword, action, ...(extra || {}) }),
+        });
+        return res.json();
+      }
+
+      async function charger(reset) {
+        if (reset) offset = 0;
+        hideMsg(msgCommentaires);
+        boutonRefresh.disabled = true;
+        boutonPlus.disabled = true;
+        try {
+          const r = await post('get_commentaires', { limit: 20, offset });
+          if (!r.ok) {
+            showMsg(msgCommentaires, r.erreur || 'Impossible de charger.', false);
+            return;
+          }
+          const rows = Array.isArray(r.data) ? r.data : [];
+          if (reset) listeCommentaires.innerHTML = '';
+          if (!rows.length && offset === 0) {
+            listeCommentaires.innerHTML = '<div style="color:#888; font-size:0.9rem;">Aucun commentaire pour le moment.</div>';
+            return;
+          }
+          rows.forEach((row) => {
+            const pseudo = (row.pseudo && String(row.pseudo).trim()) ? String(row.pseudo).trim() : 'Anonyme';
+            const card = document.createElement('div');
+            card.className = 'card-comment';
+            card.innerHTML = `
+              <div class="meta">
+                <span class="pseudo">${escapeHtml(pseudo)}</span>
+                <span>${escapeHtml(formatDateFR(row.created_at))}</span>
+              </div>
+              <div class="texte">${escapeHtml(row.texte || '')}</div>
+              <div class="actions">
+                <button type="button" class="btn-danger" data-action="delete" data-id="${escapeHtml(row.id)}">Supprimer</button>
+              </div>
+            `;
+            listeCommentaires.appendChild(card);
+          });
+          offset += rows.length;
+        } catch (e) {
+          console.error('Admin commentaires:', e);
+          showMsg(msgCommentaires, 'Erreur réseau: ' + (e.message || ''), false);
+        } finally {
+          boutonRefresh.disabled = false;
+          boutonPlus.disabled = false;
+        }
+      }
+
+      boutonLogin.addEventListener('click', async () => {
+        const pwd = inputPassword.value.trim();
+        if (!pwd) {
+          showMsg(msgLogin, 'Entre le mot de passe.', false);
+          return;
+        }
+        boutonLogin.disabled = true;
+        hideMsg(msgLogin);
+        try {
+          adminPassword = pwd;
+          const r = await post('get_status');
+          if (!r.ok) {
+            adminPassword = '';
+            showMsg(msgLogin, r.erreur || 'Mot de passe incorrect.', false);
+            return;
+          }
+          inputPassword.value = '';
+          ecranLogin.classList.add('cache');
+          ecranAdmin.classList.remove('cache');
+          charger(true);
+        } catch (e) {
+          adminPassword = '';
+          showMsg(msgLogin, 'Erreur réseau: ' + (e.message || ''), false);
+        } finally {
+          boutonLogin.disabled = false;
+        }
+      });
+
+      boutonRefresh.addEventListener('click', () => charger(true));
+      boutonPlus.addEventListener('click', () => charger(false));
+
+      listeCommentaires.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-action="delete"][data-id]');
+        if (!btn) return;
+        const id = btn.getAttribute('data-id');
+        if (!id) return;
+        if (!confirm('Supprimer ce commentaire ?')) return;
+        btn.disabled = true;
+        hideMsg(msgCommentaires);
+        try {
+          const r = await post('delete_commentaire', { id });
+          if (!r.ok) {
+            showMsg(msgCommentaires, r.erreur || 'Suppression impossible.', false);
+            btn.disabled = false;
+            return;
+          }
+          await charger(true);
+        } catch (err) {
+          console.error('Admin delete_commentaire:', err);
+          showMsg(msgCommentaires, 'Erreur réseau: ' + (err.message || ''), false);
+          btn.disabled = false;
+        }
+      });
+
+      boutonDeconnexion.addEventListener('click', () => {
+        adminPassword = '';
+        ecranAdmin.classList.add('cache');
+        ecranLogin.classList.remove('cache');
+        hideMsg(msgLogin);
+        hideMsg(msgCommentaires);
+        listeCommentaires.innerHTML = '';
+        offset = 0;
+      });
+
+      inputPassword.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') boutonLogin.click();
+      });
+    })();
+  </script>
+</body>
+</html>
+
