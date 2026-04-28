@@ -44,3 +44,34 @@ Va dans ton projet Vercel → Settings → Environment Variables et ajoute :
 3. **Arrêter le jeu** : Clique sur « Arrêter le jeu » — les visiteurs voient le message et ne peuvent pas jouer.
 4. **Reprendre** : Clique sur « Reprendre le jeu »
 5. **Réinitialiser le classement** : Clique sur « Réinitialiser le classement » (demande une confirmation)
+
+## Sécurité anti-triche (scores)
+
+Le score ne doit plus être envoyé directement à Supabase depuis le navigateur.
+
+### Ce qui a été ajouté
+
+- API serveur: `api/submit-score.js`
+- API serveur: `api/start-session.js`
+- Le jeu appelle maintenant `/api/submit-score` au lieu de `supabase.rpc(...)` en direct.
+- Garde-fous anti-triche minimaux (plafond score + progression trop rapide).
+- Session de partie signée (token HMAC) : une session créée au démarrage, consommée une seule fois à la fin.
+
+### Action obligatoire côté Supabase
+
+Exécute `supabase_security_scores.sql` dans le SQL Editor pour:
+
+- supprimer les policies d'écriture `anon` sur `scores`,
+- garder uniquement la lecture publique du classement.
+
+Exécute aussi `supabase_security_sessions.sql` pour créer la table `game_sessions` utilisée par l'anti-triche de session.
+
+### Variables Vercel nécessaires
+
+`api/submit-score.js` utilise:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SESSION_SIGNING_SECRET` (secret aléatoire long, ex: 32+ caractères)
+
+Assure-toi qu'elles sont bien définies dans Vercel, puis redeploy.

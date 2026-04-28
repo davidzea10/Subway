@@ -81,6 +81,8 @@ let vies = config.viesInitiales;
 let frameActuelle = 0;
 let lastFrameTime = 0;
 let tempsDepuisDernierSpawn = 0;
+let sessionPartieId = null;
+let sessionPartieToken = null;
 
 // Position du personnage : colonne (0 à nombreLignes-1), rang (0 à nombreRangs-1)
 // Rang 0 = en bas au milieu au démarrage
@@ -606,7 +608,24 @@ function boucleJeu(now) {
 }
 
 // ============== DÉMARRAGE ET FIN DE PARTIE ==============
-function demarrerPartie() {
+async function creerSessionPartie(pseudo) {
+  const nom = (pseudo && pseudo.trim()) ? pseudo.trim() : 'Joueur';
+  try {
+    const res = await fetch('/api/start-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pseudo: nom }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data?.ok || !data?.session_id || !data?.session_token) return null;
+    return { id: data.session_id, token: data.session_token };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function demarrerPartie() {
   enCours = true;
   score = 0;
   vies = config.viesInitiales;
@@ -625,6 +644,8 @@ function demarrerPartie() {
   valeurVies.textContent = vies;
   valeurEtape.textContent = 1;
   enPause = false;
+  sessionPartieId = null;
+  sessionPartieToken = null;
   ecranAccueil.classList.add('cache');
   ecranChoixPersonnage.classList.add('cache');
   ecranGameOver.classList.add('cache');
@@ -634,6 +655,12 @@ function demarrerPartie() {
   document.getElementById('boutons-jeu').classList.remove('cache');
   const btnComm = document.getElementById('bouton-commentaires-jeu');
   if (btnComm) btnComm.classList.remove('cache');
+
+  const session = await creerSessionPartie(nomJoueur);
+  if (session) {
+    sessionPartieId = session.id;
+    sessionPartieToken = session.token;
+  }
 
   demarrerAbonnementCommentaires();
   requestAnimationFrame(boucleJeu);
@@ -653,6 +680,8 @@ function quitterPartie() {
   enCours = false;
   enPause = false;
   arreterAbonnementCommentaires();
+  sessionPartieId = null;
+  sessionPartieToken = null;
   document.getElementById('interface-jeu').classList.add('cache');
   document.getElementById('boutons-jeu').classList.add('cache');
   const btnComm = document.getElementById('bouton-commentaires-jeu');
@@ -681,6 +710,8 @@ async function finPartie() {
   if (elMsg) elMsg.textContent = msgLingala;
   enregistrerDansHistorique(nomJoueur, score, false);
   await enregistrerScoreEnLigne(nomJoueur, score, false);
+  sessionPartieId = null;
+  sessionPartieToken = null;
   const place = await obtenirPlaceJoueur(nomJoueur);
   const elPlace = document.getElementById('place-gameover');
   const elValeurPlace = document.getElementById('valeur-place');
@@ -697,14 +728,16 @@ async function finPartie() {
   ecranGameOver.classList.remove('cache');
 }
 
-function finVictoire() {
+async function finVictoire() {
   enCours = false;
   const btnComm = document.getElementById('bouton-commentaires-jeu');
   if (btnComm) btnComm.classList.add('cache');
   majBoutonCommentairesGameOver();
   scoreVictoire.textContent = score;
   enregistrerDansHistorique(nomJoueur, score, true);
-  enregistrerScoreEnLigne(nomJoueur, score, true);
+  await enregistrerScoreEnLigne(nomJoueur, score, true);
+  sessionPartieId = null;
+  sessionPartieToken = null;
   document.getElementById('interface-jeu').classList.add('cache');
   document.getElementById('boutons-jeu').classList.add('cache');
   ecranVictoire.classList.remove('cache');
@@ -1002,13 +1035,24 @@ function escapeHtml(s) {
 // ============== SUPABASE : scores en ligne (un pseudo = une ligne, meilleur score conservé) ==============
 async function enregistrerScoreEnLigne(pseudo, points, victoire) {
   const nom = (pseudo && pseudo.trim()) ? pseudo.trim() : 'Joueur';
-  if (!supabaseClient) return;
   try {
-    await supabaseClient.rpc('insert_or_update_score', {
-      p_pseudo: nom,
-      p_score: points,
-      p_victoire: !!victoire,
+    // Sécurité: l'écriture score passe désormais par l'API serveur.
+    const res = await fetch('/api/submit-score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pseudo: nom,
+        score: points,
+        victoire: !!victoire,
+        session_id: sessionPartieId,
+        session_token: sessionPartieToken,
+      }),
     });
+    if (!res.ok) {
+      // On ignore en jeu, mais utile pour debug dans la console.
+      const txt = await res.text();
+      console.warn('submit-score rejeté:', txt);
+    }
   } catch (e) {}
 }
 
